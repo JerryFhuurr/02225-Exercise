@@ -245,15 +245,15 @@ if __name__ == "__main__":
             try:
                 U_target = float(arg.split("=")[1])
                 if U_target <= 0:
-                    print(f"⚠️ Warning: U_target={U_target} 无效，已忽略")
+                    print(f"Warning: U_target={U_target} Invalid，Ignored")
                     U_target = None
             except ValueError:
-                print("⚠️ Error: 无效的 U_target 值，使用默认值")
+                print("Error: Invalid U_target value, default value used")
                 U_target = None
         elif "method=" in arg:
             method = arg.split("=")[1]
             if method not in ["workload", "truncnorm"]:
-                print(f"⚠️ Warning: method={method} 无效，默认使用 workload")
+                print(f"Warning: method={method} Invalid，'workload' by default")
                 method = "workload"
 
     tasks = load_tasks_from_csv(csv_filename, method)
