@@ -3,7 +3,7 @@ from functools import reduce
 import sys
 import random
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
 
 
 def load_tasks_from_csv(filename):
@@ -43,8 +43,7 @@ class Task:
         self.priority = priority
         self.bcet = bcet
         self.wcet = wcet
-        self.execution_time = wcet
-        # random.randint(bcet, wcet)  # 随机选择一个执行时间 C
+        self.execution_time = random.randint(bcet, wcet)  # 随机选择一个执行时间 C
         self.release_time = 0                 # 任务何时释放
         self.remaining_time = self.execution_time  # 剩余执行时间
         self.completion_time = None           # 任务完成时间
@@ -54,8 +53,7 @@ class Task:
     def release_new_job(self, current_time):
         """ 释放一个新任务实例（新的 job）"""
         self.release_time = current_time
-        self.execution_time = self.wcet
-        # random.randint(self.bcet, self.wcet)  # 重新随机生成执行时间 C
+        self.execution_time = random.randint(self.bcet, self.wcet)  # 重新随机生成执行时间 C
         self.remaining_time = self.execution_time  # 重新设置剩余执行时间
         self.completion_time = None  # 还未完成
         self.response_time = None  # 还未计算响应时间
@@ -143,9 +141,34 @@ def rate_monotonic_scheduling(tasks, simulation_time):
     return schedule_log
 
 
+def plot_gantt_chart(schedule_log):
+    """ 绘制甘特图 """
+    plt.figure(figsize=(10, 5))
+
+    task_colors = {}
+    y_pos = {}
+
+    # 生成颜色并计算任务 y 轴位置
+    unique_tasks = set([entry[1] for entry in schedule_log])
+    for i, task in enumerate(sorted(unique_tasks)):
+        task_colors[task] = plt.colormaps["tab10"](i)
+        y_pos[task] = i
+
+    for start_time, task in schedule_log:
+        if task != "Idle":
+            plt.barh(y_pos[task], 1, left=start_time, color=task_colors[task], edgecolor="black")
+
+    plt.yticks(range(len(y_pos)), sorted(y_pos.keys()))
+    plt.xlabel("Time")
+    plt.ylabel("Tasks")
+    plt.title("Rate Monotonic Schedule - Gantt Chart")
+    plt.grid(axis="x")
+    plt.show()
+
+
 if __name__ == "__main__":
     """ 主函数 """
-    
+
     csv_filename = sys.argv[1]
 
     tasks = load_tasks_from_csv(csv_filename)
@@ -155,3 +178,5 @@ if __name__ == "__main__":
     print(f"Simulation Time (LCM of all periods): {simulation_time}")
 
     schedule_log = rate_monotonic_scheduling(tasks, simulation_time)
+
+    plot_gantt_chart(schedule_log)  # 绘制甘特图
