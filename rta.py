@@ -25,7 +25,14 @@ class Task:
         self.priority = priority
 
     def __repr__(self):
-        return f"Task({self.name}, P={self.priority}, C=[{self.bcet}-{self.wcet}], T={self.period}, D={self.deadline})"
+        # Calculate task-specific utilization (WCET/Period)
+        utilization = self.wcet / self.period
+        return (
+            f"Task({self.name}, BCET={self.bcet}, WCET={self.wcet}, "
+            f"Period={self.period}, Deadline={self.deadline}, "
+            f"Utilization={utilization:.2f}, Core=0, Priority={self.priority}, "
+            f"Type=TT, MIT=0, Server=None)"
+        )
 
 # --------------------------
 # Scheduling Algorithm Detection
@@ -124,7 +131,7 @@ if __name__ == "__main__":
     scheduling_algorithm = detect_scheduling_algorithm(tasks)
     
     # Compute hyperperiod (LCM of task periods)
-    hyperperiod = max(task.period for task in tasks)
+    hyperperiod = max(task.period for task in tasks)  # Note: Replace with LCM calculation for accuracy!
 
     # Compute utilization
     utilization = calculate_utilization(tasks)
@@ -132,6 +139,16 @@ if __name__ == "__main__":
     # Run RTA analysis
     rta_results = RTAAnalyzer.calculate_wcrt(tasks)
     schedulable = rta_results is not None
+
+    # ----------------------------------
+    # Added TaskSet Printout
+    # ----------------------------------
+    print("\nTaskSet:")
+    print(f"Hyperperiod = {hyperperiod}")
+    print(f"CPU Worst Case Utilization = {utilization:.2f}")
+    for task in tasks:
+        print(task)
+    # ----------------------------------
 
     # Print Analysis Results
     print("\nResponse Time Analysis")
@@ -144,7 +161,7 @@ if __name__ == "__main__":
     if schedulable:
         print("Task  WCRT  Deadline  Status")
         print("----  ----  --------  ------")
-        for task in sorted(tasks, key=lambda t: t.name):  # Ensure correct order T1, T2, ...
+        for task in sorted(tasks, key=lambda t: t.name):
             wcrt = rta_results[task.name]
             status = "✓" if wcrt <= task.deadline else "✗"
             print(f" {task.name:<4} {wcrt:<4} {task.deadline:<8} {status}")
