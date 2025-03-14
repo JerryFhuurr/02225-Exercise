@@ -1,9 +1,9 @@
 import math
 from functools import reduce
 import sys
-import random
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import truncnorm
 
 
 def load_tasks_from_csv(filename):
@@ -33,6 +33,20 @@ def lcm_of_list(numbers):
     return reduce(lcm, numbers)
 
 
+def generate_execution_time(bcet: int, wcet: int) -> int:
+    """ 在 [BCET, WCET] 之间生成任务执行时间 C """
+
+    if bcet == wcet:  
+            return max(1, bcet)
+
+    mean = (bcet + wcet) / 2
+    std_dev = max((wcet - bcet) / 3, 0.1)  # 确保 std_dev 不为 0
+
+    a, b = (bcet - mean) / std_dev, (wcet - mean) / std_dev
+    execution_time = round(truncnorm.rvs(a, b, loc=mean, scale=std_dev))
+
+    return max(1, execution_time)  # 确保执行时间至少为 1
+
 class Task:
     """任务类"""
 
@@ -43,7 +57,7 @@ class Task:
         self.priority = priority
         self.bcet = bcet
         self.wcet = wcet
-        self.execution_time = random.randint(bcet, wcet)  # 随机选择一个执行时间 C
+        self.execution_time = generate_execution_time(bcet, wcet)  # 生成任务执行时间 C
         self.release_time = 0                 # 任务何时释放
         self.remaining_time = self.execution_time  # 剩余执行时间
         self.completion_time = None           # 任务完成时间
@@ -53,7 +67,7 @@ class Task:
     def release_new_job(self, current_time):
         """ 释放一个新任务实例（新的 job）"""
         self.release_time = current_time
-        self.execution_time = random.randint(self.bcet, self.wcet)  # 重新随机生成执行时间 C
+        self.execution_time = generate_execution_time(self.bcet, self.wcet)  # 重新生成任务
         self.remaining_time = self.execution_time  # 重新设置剩余执行时间
         self.completion_time = None  # 还未完成
         self.response_time = None  # 还未计算响应时间
@@ -64,10 +78,8 @@ class Task:
     
     def execute(self, time_units=1):
         """ 执行任务 """
-        self.remaining_time -= time_units
-        if self.remaining_time <= 0:
-            return True  # 任务完成
-        return False  # 任务未完成
+        self.remaining_time = max(0, self.remaining_time - time_units)  # 确保不会小于 0
+        return self.remaining_time == 0  # 任务完成返回 True
 
     def calculate_response_time(self, current_time):
         """ 计算任务的响应时间 (完成时间 - 释放时间) """
