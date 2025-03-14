@@ -38,7 +38,7 @@ def lcm_of_list(numbers):
 def assign_alpha(tasks, U_target=None):
     """
     Compute the α (CPU load factor) of the task, which supports two cases:
-    1. If 'U_target' is given, normalize by 'T' such that Σ α_i ≈ U_target.
+    1. If 'U_target' is given, normalize by 'T' such that Σ α_i ≈ U_target (may exceed 1).
     2. If 'U_target' is not given, assign 'α_i' randomly, and normalize to ensure that Σ α_i = 1 (does not exceed 100% CPU).
 
     Parameters:
@@ -62,6 +62,10 @@ def assign_alpha(tasks, U_target=None):
         for task, alpha in zip(tasks, alphas):
             task.alpha = alpha
     
+    # Output total CPU load
+    total_utilization = sum(task.alpha for task in tasks)
+    print(f"Total CPU load: Σ α_i = {total_utilization:.2f}")
+
     return tasks
 
 
