@@ -1,6 +1,6 @@
 # rta.py
 
-This repository contains the `rta.py` script for performing Real-Time Analysis (RTA).
+This repository contains the `rta.py` script for performing Response Time Analysis (RTA).
 
 ## Usage
 
