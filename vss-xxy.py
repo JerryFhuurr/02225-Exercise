@@ -4,11 +4,11 @@ import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import truncnorm
+import numpy as np
 
 
-def load_tasks_from_csv(filename):
-    """ Load task list from CSV file """
-
+def load_tasks_from_csv(filename, method="workload"):
+    """ Load task list from CSV file with selected execution time method """
     df = pd.read_csv(filename)
     tasks = []
     for _, row in df.iterrows():
@@ -18,7 +18,8 @@ def load_tasks_from_csv(filename):
             wcet=row["WCET"],
             period=row["Period"],
             deadline=row["Deadline"],
-            priority=row["Priority"]
+            priority=row["Priority"],
+            method=method  # 传递执行时间计算方法
         )
         tasks.append(task)
     return tasks
@@ -34,9 +35,52 @@ def lcm_of_list(numbers):
     return reduce(lcm, numbers)
 
 
-def generate_execution_time(bcet: int, wcet: int) -> int:
-    """ 在 [BCET, WCET] 之间生成任务执行时间 C """
+def assign_alpha(tasks, U_target=None):
+    """
+    Compute the α (CPU load factor) of the task, which supports two cases:
+    1. If 'U_target' is given, normalize by 'T' such that Σ α_i ≈ U_target.
+    2. If 'U_target' is not given, assign 'α_i' randomly, and normalize to ensure that Σ α_i = 1 (does not exceed 100% CPU).
 
+    Parameters:
+    - tasks (list): indicates a list of tasks. Each task contains the "period" key.
+    - U_target (float, optional): indicates the target CPU usage. The value range is 0,1.
+
+    Back:
+    - Updated 'tasks' including' alpha '.
+    """
+    n = len(tasks)
+    
+    if U_target:  
+        # If 'U_target' is given, 'α' is normalized by 'T'
+        total_T = sum(task.period for task in tasks)
+        for task in tasks:
+            task.alpha = (task.period / total_T) * U_target  # normalization
+    else:
+        # If 'U_target' is not given, 'α' is randomly assigned and normalized
+        alphas = np.random.rand(n)
+        alphas = alphas / alphas.sum()  # Normalized so that Σ α_i = 1
+        for task, alpha in zip(tasks, alphas):
+            task.alpha = alpha
+    
+    return tasks
+
+
+def generate_execution_time_workload(bcet: int, wcet: int, period: int, alpha: float) -> int:
+    """
+    Calculate the task execution time 'C' :
+    - `C = α * T`
+    - Make sure `C ∈ [1, WCET]`
+        
+    Parameters:
+    - period (int): Task period (T)
+    - alpha (float): load Factor (CPU Utilization Factor)
+    """
+    execution_time = alpha * period
+    return max(1, min(wcet, round(execution_time)))
+
+
+def generate_execution_time_truncnorm(bcet: int, wcet: int) -> int:
+    """ Generate a random execution time using a truncated normal distribution """
     if bcet == wcet:  
             return max(1, bcet)
 
@@ -46,19 +90,27 @@ def generate_execution_time(bcet: int, wcet: int) -> int:
     a, b = (bcet - mean) / std_dev, (wcet - mean) / std_dev
     execution_time = round(truncnorm.rvs(a, b, loc=mean, scale=std_dev))
 
-    return max(1, execution_time)  # Ensure that the execution time is at least 1
+    return max(1, min(wcet, execution_time))
+
 
 class Task:
     """ Task Class """
-
-    def __init__(self, task_id, bcet, wcet, period, deadline, priority):
+    def __init__(self, task_id, bcet, wcet, period, deadline, priority, method="workload"):
         self.task_id = task_id
         self.period = period
         self.deadline = deadline
         self.priority = priority
         self.bcet = bcet
         self.wcet = wcet
-        self.execution_time = generate_execution_time(bcet, wcet)  # Generate task execution time C
+        self.method = method  # 选择执行时间计算方法
+        self.alpha = 0.0  # 默认 CPU 负载因子
+        
+        # 计算任务执行时间 C
+        if self.method == "workload":
+            self.execution_time = generate_execution_time_workload(self.bcet, self.wcet, self.period, self.alpha)
+        elif self.method == "truncnorm":
+            self.execution_time = generate_execution_time_truncnorm(self.bcet, self.wcet)
+
         self.release_time = 0                 # task release time
         self.remaining_time = self.execution_time  # task remaining execution time
         self.completion_time = None           # task completion time
@@ -67,9 +119,13 @@ class Task:
 
     def release_new_job(self, current_time):
         """ Release a new task instance (new job) """
-
         self.release_time = current_time
-        self.execution_time = generate_execution_time(self.bcet, self.wcet)  # Generate a new execution time
+        # 任务执行时间按选择的方法重新计算
+        if self.method == "workload":
+            self.execution_time = generate_execution_time_workload(self.bcet, self.wcet, self.period, self.alpha)
+        elif self.method == "truncnorm":
+            self.execution_time = generate_execution_time_truncnorm(self.bcet, self.wcet)
+
         self.remaining_time = self.execution_time  # Reset remaining time
         self.completion_time = None  # Completion time not yet calculated
         self.response_time = None  # Response time not yet calculated
@@ -154,7 +210,6 @@ def rate_monotonic_scheduling(tasks, simulation_time):
 
 def plot_gantt_chart(schedule_log):
     """ Draw a Gantt chart """
-    
     plt.figure(figsize=(10, 5))
 
     task_colors = {}
@@ -180,10 +235,43 @@ def plot_gantt_chart(schedule_log):
 
 if __name__ == "__main__":
     """ Main Function """
-
     csv_filename = sys.argv[1]
 
-    tasks = load_tasks_from_csv(csv_filename)
+    # 检查 `U_target` 和 `method`
+    U_target = None
+    method = "workload"  # 默认使用 `workload` 方法
+    for arg in sys.argv[2:]:
+        if "U_target=" in arg:
+            try:
+                U_target = float(arg.split("=")[1])
+                if U_target <= 0:
+                    print(f"⚠️ Warning: U_target={U_target} 无效，已忽略")
+                    U_target = None
+            except ValueError:
+                print("⚠️ Error: 无效的 U_target 值，使用默认值")
+                U_target = None
+        elif "method=" in arg:
+            method = arg.split("=")[1]
+            if method not in ["workload", "truncnorm"]:
+                print(f"⚠️ Warning: method={method} 无效，默认使用 workload")
+                method = "workload"
+
+    tasks = load_tasks_from_csv(csv_filename, method)
+
+    # 分配 `α`
+    tasks = assign_alpha(tasks, U_target)
+
+     # 计算 `C` (执行时间)
+    for task in tasks:
+        task.alpha = task.alpha  # 任务类中 `alpha` 需要赋值
+        if method == "workload":
+            task.execution_time = generate_execution_time_workload(
+                bcet=task.bcet, wcet=task.wcet, period=task.period, alpha=task.alpha
+            )
+        elif method == "truncnorm":
+            task.execution_time = generate_execution_time_truncnorm(
+                bcet=task.bcet, wcet=task.wcet
+            )
 
     periods = [task.period for task in tasks]   #  Get the periods of all tasks
     simulation_time = lcm_of_list(periods) # Calculate the simulation time (LCM of all periods)
