@@ -30,8 +30,7 @@ class Task:
         return (
             f"Task({self.name}, BCET={self.bcet}, WCET={self.wcet}, "
             f"Period={self.period}, Deadline={self.deadline}, "
-            f"Utilization={utilization:.2f}, Core=0, Priority={self.priority}, "
-            f"Type=TT, MIT=0, Server=None)"
+            f"Utilization={utilization:.2f}, Priority={self.priority}, "
         )
 
 # --------------------------
