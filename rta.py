@@ -59,21 +59,26 @@ class RTAAnalyzer:
         Returns:
             Dictionary mapping task names to WCRT values
         """
+        # Sorts tasks by ascending priority (lower value = higher priority)
         sorted_tasks = sorted(tasks, key=lambda x: x.priority)
         wcrt = {}
 
         for i, task in enumerate(sorted_tasks):
+            # Includes current task + higher-priority tasks (hp_tasks[:i] = higher-priority only)
             hp_tasks = sorted_tasks[:i+1]  # Current task + higher priority tasks
             R = task.wcet  # Initial response time
             
             while True:
                 prev_R = R
-                # Calculate interference from higher priority tasks
+                # Calculates interference using CEIL(R/T_j) via integer math trick
                 interference = sum(((prev_R + t.period - 1) // t.period) * t.wcet for t in hp_tasks[:i])
                 R = task.wcet + interference
-                
+
+                # Early termination if deadline is missed
                 if R > task.deadline:
                     return None  # Task is unschedulable
+
+                # Loop until response time converges
                 if R == prev_R:
                     break  # Convergence
             wcrt[task.name] = R
@@ -131,7 +136,7 @@ if __name__ == "__main__":
     scheduling_algorithm = detect_scheduling_algorithm(tasks)
     
     # Compute hyperperiod (LCM of task periods)
-    hyperperiod = max(task.period for task in tasks)  # Note: Replace with LCM calculation for accuracy!
+    hyperperiod = max(task.period for task in tasks)
 
     # Compute utilization
     utilization = calculate_utilization(tasks)
@@ -165,5 +170,6 @@ if __name__ == "__main__":
             wcrt = rta_results[task.name]
             status = "✓" if wcrt <= task.deadline else "✗"
             print(f" {task.name:<4} {wcrt:<4} {task.deadline:<8} {status}")
+        print("----  ----  --------  ------")
     else:
         print("System is not schedulable. Some tasks miss their deadlines.")
