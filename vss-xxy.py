@@ -7,7 +7,8 @@ from scipy.stats import truncnorm
 
 
 def load_tasks_from_csv(filename):
-    """ 从 CSV 文件中加载任务列表 """
+    """ Load task list from CSV file """
+
     df = pd.read_csv(filename)
     tasks = []
     for _, row in df.iterrows():
@@ -24,12 +25,12 @@ def load_tasks_from_csv(filename):
 
 
 def lcm(a, b):
-    """计算两个数的最小公倍数 (LCM)"""
+    """ Calculate the least common multiple (LCM) of two numbers """
     return abs(a * b) // math.gcd(a, b)
 
 
 def lcm_of_list(numbers):
-    """计算列表中所有数的最小公倍数"""
+    """ Calculate the least common multiple of all numbers in the list """
     return reduce(lcm, numbers)
 
 
@@ -40,15 +41,15 @@ def generate_execution_time(bcet: int, wcet: int) -> int:
             return max(1, bcet)
 
     mean = (bcet + wcet) / 2
-    std_dev = max((wcet - bcet) / 3, 0.1)  # 确保 std_dev 不为 0
+    std_dev = max((wcet - bcet) / 3, 0.1)  # Make sure std_dev is not 0
 
     a, b = (bcet - mean) / std_dev, (wcet - mean) / std_dev
     execution_time = round(truncnorm.rvs(a, b, loc=mean, scale=std_dev))
 
-    return max(1, execution_time)  # 确保执行时间至少为 1
+    return max(1, execution_time)  # Ensure that the execution time is at least 1
 
 class Task:
-    """任务类"""
+    """ Task Class """
 
     def __init__(self, task_id, bcet, wcet, period, deadline, priority):
         self.task_id = task_id
@@ -57,110 +58,109 @@ class Task:
         self.priority = priority
         self.bcet = bcet
         self.wcet = wcet
-        self.execution_time = generate_execution_time(bcet, wcet)  # 生成任务执行时间 C
-        self.release_time = 0                 # 任务何时释放
-        self.remaining_time = self.execution_time  # 剩余执行时间
-        self.completion_time = None           # 任务完成时间
-        self.response_time = None             # 响应时间
+        self.execution_time = generate_execution_time(bcet, wcet)  # Generate task execution time C
+        self.release_time = 0                 # task release time
+        self.remaining_time = self.execution_time  # task remaining execution time
+        self.completion_time = None           # task completion time
+        self.response_time = None             # task response time
         self.wcrt = 0
 
     def release_new_job(self, current_time):
-        """ 释放一个新任务实例（新的 job）"""
+        """ Release a new task instance (new job) """
+
         self.release_time = current_time
-        self.execution_time = generate_execution_time(self.bcet, self.wcet)  # 重新生成任务
-        self.remaining_time = self.execution_time  # 重新设置剩余执行时间
-        self.completion_time = None  # 还未完成
-        self.response_time = None  # 还未计算响应时间
+        self.execution_time = generate_execution_time(self.bcet, self.wcet)  # Generate a new execution time
+        self.remaining_time = self.execution_time  # Reset remaining time
+        self.completion_time = None  # Completion time not yet calculated
+        self.response_time = None  # Response time not yet calculated
     
     def is_ready(self, current_time):
-        """ 任务是否已释放 (可执行) """
+        """ Check if the task is ready to execute """
         return current_time >= self.release_time and self.remaining_time > 0
     
     def execute(self, time_units=1):
-        """ 执行任务 """
-        self.remaining_time = max(0, self.remaining_time - time_units)  # 确保不会小于 0
-        return self.remaining_time == 0  # 任务完成返回 True
+        """ Execute the task for a given number of time units """
+        self.remaining_time = max(0, self.remaining_time - time_units)  # Subtract time units
+        return self.remaining_time == 0  # Return True if the task is finished
 
     def calculate_response_time(self, current_time):
-        """ 计算任务的响应时间 (完成时间 - 释放时间) """
+        """ Calculate the response time of the task """
         self.completion_time = current_time
         self.response_time = self.completion_time - self.release_time
         self.wcrt = max(self.wcrt, self.response_time)
 
 
 def AdvanceTime(current_time, tasks, job_release_times, active_jobs):
-    """ 跳过 CPU 空闲时间，直接前进到下一个任务释放时间 """
+    """ Advance time to the next event """
     if active_jobs:
-        return 1  # 如果有任务就绪，则推进 1 个时间单位
+        return 1  # If there are active jobs, advance 1 time unit
     
-    future_release_times = [t for t in job_release_times.values() if t > current_time]  # 计算下一个任务的释放时间
+    future_release_times = [t for t in job_release_times.values() if t > current_time]  # Get future release times
     if future_release_times:
-        return min(future_release_times) - current_time  # 跳到最近的释放时间
+        return min(future_release_times) - current_time  # Advance to the next release time
     
-    return 1  # 没有任务时，推进 1
+    return 1  # If no future release times, advance 1 time unit
 
 
 def rate_monotonic_scheduling(tasks, simulation_time):
-    """ 运行 Rate Monotonic (RM) 调度算法 """
+    """ Rate Monotonic Scheduling Algorithm """
     current_time = 0
     
-    active_jobs = []    # 存储当前正在运行或等待的任务（就绪任务）
+    active_jobs = []    # Store the active jobs
 
-    job_release_times = {task.task_id: 0 for task in tasks} # 存储每个任务的下次释放时间
+    job_release_times = {task.task_id: 0 for task in tasks} # Store the release times of each task
 
     schedule_log = []
 
     while current_time < simulation_time:
-        # --- 步骤 1: 释放新任务 ---
+        # --- Step 1: Release new jobs ---
         for task in tasks:
             if current_time == job_release_times[task.task_id]:
                 task.release_new_job(current_time)
                 active_jobs.append(task)
                 job_release_times[task.task_id] += task.period
-                print(f"[时间 {current_time}] 任务 {task.task_id} 释放，执行时间 {task.execution_time}")
+                print(f"[Time {current_time}] Task {task.task_id} Release，Execution Time {task.execution_time}")
 
-        # --- 步骤 2: 选择优先级最高的任务 ---
-        active_jobs = sorted(active_jobs, key=lambda t: t.priority)  # 按优先级排序
+        # --- Step 2: Select the task with the highest priority ---
+        active_jobs = sorted(active_jobs, key=lambda t: t.priority)  # Sort tasks by priority
         if active_jobs:
             current_job = active_jobs[0]
-            finished = current_job.execute(1)  # 执行 1 个时间单位
+            finished = current_job.execute(1)  # Execute the task for 1 time unit
             schedule_log.append((current_time, current_job.task_id))
             
-            print(f"[时间 {current_time}] 任务 {current_job.task_id} 运行，剩余时间 {current_job.remaining_time}")
+            print(f"[Time {current_time}] Task {current_job.task_id} Running，Remaining Time {current_job.remaining_time}")
 
-            # --- 步骤 3: 任务执行完成，计算响应时间 ---
+            # --- Step 3: Check if the task is finished ---
             if finished:
                 current_job.calculate_response_time(current_time + 1)
                 active_jobs.remove(current_job)
-                print(f"[时间 {current_time+1}] 任务 {current_job.task_id} 完成，响应时间 {current_job.response_time}")
+                print(f"[Time {current_time+1}] Task {current_job.task_id} Completed，Response_Time {current_job.response_time}")
 
         else:
-            # 没有任务就绪，CPU 空闲
+            # If no active jobs, add an "Idle" entry to the schedule log
             schedule_log.append((current_time, "Idle"))
-            # print(f"[时间 {current_time}] CPU 空闲")
 
-        # --- 步骤 4: 时间前进 ---
-        # current_time += 1
-
-        # 使用 `AdvanceTime()` 跳过空闲时间
+        # --- Step 4: Advance time to the next event ---
         current_time += AdvanceTime(current_time, tasks, job_release_times, active_jobs)
         
-    # --- 步骤 5: 计算 Worst-Case Response Time (WCRT) ---
+    # -- Step 5: Calculate Worst-Case Response Time (WCRT)
     print("\n=== Worst-Case Response Time (WCRT) ===")
+
     for task in tasks:
-        print(f"任务 {task.task_id}: WCRT = {task.wcrt}")
+        print(f"Task {task.task_id}: WCRT = {task.wcrt}")
 
     return schedule_log
 
 
 def plot_gantt_chart(schedule_log):
-    """ 绘制甘特图 """
+    """ Draw a Gantt chart """
+    
     plt.figure(figsize=(10, 5))
 
     task_colors = {}
     y_pos = {}
 
-    # 生成颜色并计算任务 y 轴位置
+    # Generate colors and calculate the task Y-axis position
     unique_tasks = set([entry[1] for entry in schedule_log])
     for i, task in enumerate(sorted(unique_tasks)):
         task_colors[task] = plt.colormaps["tab10"](i)
@@ -179,16 +179,16 @@ def plot_gantt_chart(schedule_log):
 
 
 if __name__ == "__main__":
-    """ 主函数 """
+    """ Main Function """
 
     csv_filename = sys.argv[1]
 
     tasks = load_tasks_from_csv(csv_filename)
 
-    periods = [task.period for task in tasks]   # 计算最小公倍数 (LCM) 作为 simulation_time
-    simulation_time = lcm_of_list(periods)
+    periods = [task.period for task in tasks]   #  Get the periods of all tasks
+    simulation_time = lcm_of_list(periods) # Calculate the simulation time (LCM of all periods)
     print(f"Simulation Time (LCM of all periods): {simulation_time}")
 
     schedule_log = rate_monotonic_scheduling(tasks, simulation_time)
 
-    plot_gantt_chart(schedule_log)  # 绘制甘特图
+    plot_gantt_chart(schedule_log)  # Draw a Gantt chart
