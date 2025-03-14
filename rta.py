@@ -76,7 +76,8 @@ class RTAAnalyzer:
 
                 # Early termination if deadline is missed
                 if R > task.deadline:
-                    return None  # Task is unschedulable
+                    raise ValueError(
+                        f"Task {task.name} is not schedulable")  # Raise an exception Task is unschedulable
 
                 # Loop until response time converges
                 if R == prev_R:
