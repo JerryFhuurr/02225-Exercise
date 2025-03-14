@@ -40,9 +40,9 @@ class Task:
         self.task_id = task_id
         self.period = period
         self.deadline = deadline
-        self.priority = priority              # 任务优先级 (从 CSV 读取)
-        self.bcet = bcet                      # 最小执行时间 (Best-Case Execution Time)
-        self.wcet = wcet                     # 最大执行时间 (Worst-Case Execution Time)
+        self.priority = priority
+        self.bcet = bcet
+        self.wcet = wcet
         self.execution_time = wcet
         # random.randint(bcet, wcet)  # 随机选择一个执行时间 C
         self.release_time = 0                 # 任务何时释放
@@ -105,23 +105,23 @@ def rate_monotonic_scheduling(tasks, simulation_time):
         for task in tasks:
             if current_time == job_release_times[task.task_id]:
                 task.release_new_job(current_time)
-                active_jobs.append(task)  # 将新任务添加到就绪队列
-                job_release_times[task.task_id] += task.period  # 更新下次释放时间
+                active_jobs.append(task)
+                job_release_times[task.task_id] += task.period
                 print(f"[时间 {current_time}] 任务 {task.task_id} 释放，执行时间 {task.execution_time}")
 
         # --- 步骤 2: 选择优先级最高的任务 ---
         active_jobs = sorted(active_jobs, key=lambda t: t.priority)  # 按优先级排序
         if active_jobs:
-            current_job = active_jobs[0]  # 选出优先级最高的任务
+            current_job = active_jobs[0]
             finished = current_job.execute(1)  # 执行 1 个时间单位
-            schedule_log.append((current_time, current_job.task_id))  # 记录执行情况
+            schedule_log.append((current_time, current_job.task_id))
             
             print(f"[时间 {current_time}] 任务 {current_job.task_id} 运行，剩余时间 {current_job.remaining_time}")
 
             # --- 步骤 3: 任务执行完成，计算响应时间 ---
             if finished:
-                current_job.calculate_response_time(current_time + 1)  # 计算响应时间
-                active_jobs.remove(current_job)  # 从就绪队列移除
+                current_job.calculate_response_time(current_time + 1)
+                active_jobs.remove(current_job)
                 print(f"[时间 {current_time+1}] 任务 {current_job.task_id} 完成，响应时间 {current_job.response_time}")
 
         else:
@@ -140,7 +140,7 @@ def rate_monotonic_scheduling(tasks, simulation_time):
     for task in tasks:
         print(f"任务 {task.task_id}: WCRT = {task.wcrt}")
 
-    return schedule_log  # 返回调度日志
+    return schedule_log
 
 
 if __name__ == "__main__":
