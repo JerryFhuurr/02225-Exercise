@@ -145,10 +145,7 @@ def rate_monotonic_scheduling(tasks, simulation_time):
 
 if __name__ == "__main__":
     """ 主函数 """
-    if len(sys.argv) < 2:
-        print("使用方法: python simulator.py <csv文件名>")
-        sys.exit(1)
-
+    
     csv_filename = sys.argv[1]
 
     tasks = load_tasks_from_csv(csv_filename)
