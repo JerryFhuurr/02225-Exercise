@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import copy
-from rta_2 import load_tasks, RTAAnalyzer, calculate_utilization
+from rta import load_tasks, RTAAnalyzer, calculate_utilization
 from vss_simulator import load_tasks_from_csv, assign_alpha, lcm_of_list, run_multiple_simulations, plot_gantt_chart, rate_monotonic_scheduling
 import matplotlib.pyplot as plt
 import numpy as np

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import statistics
 from vss_simulator import load_tasks_from_csv, assign_alpha, lcm_of_list, run_single_simulation
-from rta_2 import load_tasks, RTAAnalyzer
+from rta import load_tasks, RTAAnalyzer
 
 # 按任务名数字排序，如 T1, T2, ... T10, T11
 def numeric_task_name(task):

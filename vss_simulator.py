@@ -239,7 +239,7 @@ def plot_gantt_chart(schedule_log, save_path=None):
     
     # 最后弹出图窗
     plt.show()
-    
+
 
 # ----- 多次仿真与统计 -----
 def run_single_simulation(tasks, simulation_time, verbose=False, log_file=None):
