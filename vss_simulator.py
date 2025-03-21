@@ -9,6 +9,8 @@ import numpy as np
 import argparse
 import logging
 import statistics
+import logging
+import os
 
 
 # ----- 辅助函数 -----
@@ -211,13 +213,13 @@ def rate_monotonic_scheduling(tasks, simulation_time, verbose=False, log_file=No
     return schedule_log
 
 
-def plot_gantt_chart(schedule_log):
+def plot_gantt_chart(schedule_log, save_path=None):
     """ Draw a Gantt chart """
     plt.figure(figsize=(10, 5))
     task_colors = {}
     y_pos = {}
-    # Generate colors and calculate the task Y-axis position
-    unique_tasks = set([entry[1] for entry in schedule_log])
+    # 根据 schedule_log 中的任务（不包括 "Idle"）生成颜色和 Y 轴位置
+    unique_tasks = set(entry[1] for entry in schedule_log if entry[1] != "Idle")
     for i, task in enumerate(sorted(unique_tasks)):
         task_colors[task] = plt.colormaps["tab10"](i)
         y_pos[task] = i
@@ -229,6 +231,13 @@ def plot_gantt_chart(schedule_log):
     plt.ylabel("Tasks")
     plt.title("Rate Monotonic Schedule - Gantt Chart")
     plt.grid(axis="x")
+    
+    # 如果提供了保存路径，则保存图片
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Gantt chart saved to {save_path}")
+    
+    # 最后弹出图窗
     plt.show()
     
 
@@ -302,17 +311,32 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", action="store_true", help="Output detailed log to console")
     parser.add_argument("--plot", action="store_true", help="Generate Gantt chart for single simulation")
     parser.add_argument("--logfile", default=None, help="File to save detailed simulation log")
+    parser.add_argument("--outdir", type=str, default="output", help="Base directory to save images/logs")
+
+    
     args = parser.parse_args()
+    
+    # 1. 如果主输出目录不存在，创建之
+    if not os.path.exists(args.outdir):
+        os.makedirs(args.outdir, exist_ok=True)
+
+    # 2. 创建 images/ 和 logs/ 子目录
+    images_dir = os.path.join(args.outdir, "images")
+    logs_dir = os.path.join(args.outdir, "logs")
+    os.makedirs(images_dir, exist_ok=True)
+    os.makedirs(logs_dir, exist_ok=True)
 
     # 载入任务及分配 α
     original_tasks = load_tasks_from_csv(args.csv_filename, args.method)
     original_tasks = assign_alpha(original_tasks, args.U_target)
+    
     # 根据方法重新计算执行时间
     for task in original_tasks:
         if args.method == "workload":
             task.execution_time = generate_execution_time_workload(task.bcet, task.wcet, task.period, task.alpha)
         else:
             task.execution_time = generate_execution_time_truncnorm(task.bcet, task.wcet)
+    
     # 计算仿真时间
     if args.simtime:
         simulation_time = args.simtime
@@ -320,14 +344,32 @@ if __name__ == "__main__":
         simulation_time = lcm_of_list([task.period for task in original_tasks])
     print(f"Simulation Time: {simulation_time}")
 
+    # 如果 runs==1, 单次仿真
     if args.runs == 1:
-        # 单次仿真
-        schedule_log = rate_monotonic_scheduling(original_tasks, simulation_time, verbose=args.verbose, log_file=(open(args.logfile, "w") if args.logfile else None))
+        log_file_path = None
+        if args.logfile:
+            # 把日志文件放到 logs/ 下
+            log_file_path = os.path.join(logs_dir, args.logfile)
+        schedule_log = rate_monotonic_scheduling(
+            original_tasks, simulation_time, verbose=args.verbose,
+            log_file=(open(log_file_path, "w") if log_file_path else None)
+        )
         if args.plot:
-            plot_gantt_chart(schedule_log)
+            # 把甘特图保存到 images/gantt_chart.png
+            gantt_path = os.path.join(images_dir, "gantt_chart.png")
+            plot_gantt_chart(schedule_log, save_path=gantt_path)
     else:
-        # 多次仿真，输出扩展统计指标
-        stats = run_multiple_simulations(original_tasks, simulation_time, num_runs=args.runs, verbose=args.verbose, log_filename=args.logfile)
+        # 多次仿真
+        log_file_path = None
+        if args.logfile:
+            log_file_path = os.path.join(logs_dir, args.logfile)
+        stats = run_multiple_simulations(
+            original_tasks, simulation_time, num_runs=args.runs,
+            verbose=args.verbose, log_filename=log_file_path
+        )
         print("\n=== Simulation Statistics ===")
         for task_id, stat in stats.items():
-            print(f"Task {task_id}: Average WCRT = {stat['average']:.2f}, Median = {stat['median']}, Variance = {stat['variance']:.2f}, 95th Percentile = {stat['95th']}, Max WCRT = {stat['max']}")
+            print(f"Task {task_id}: Average WCRT = {stat['average']:.2f}, "
+                  f"Median = {stat['median']}, Variance = {stat['variance']:.2f}, "
+                  f"95th Percentile = {stat['95th']}, Max WCRT = {stat['max']}")
+            
