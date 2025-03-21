@@ -344,32 +344,31 @@ if __name__ == "__main__":
         simulation_time = lcm_of_list([task.period for task in original_tasks])
     print(f"Simulation Time: {simulation_time}")
 
-    # 如果 runs==1, 单次仿真
+    # 如果 runs==1, 单次仿真并自动保存甘特图
     if args.runs == 1:
         log_file_path = None
         if args.logfile:
-            # 把日志文件放到 logs/ 下
             log_file_path = os.path.join(logs_dir, args.logfile)
         schedule_log = rate_monotonic_scheduling(
-            original_tasks, simulation_time, verbose=args.verbose,
+            original_tasks, simulation_time,
+            verbose=args.verbose,
             log_file=(open(log_file_path, "w") if log_file_path else None)
         )
-        if args.plot:
-            # 把甘特图保存到 images/gantt_chart.png
-            gantt_path = os.path.join(images_dir, "gantt_chart.png")
-            plot_gantt_chart(schedule_log, save_path=gantt_path)
+        # 无需再判断 args.plot，始终自动保存甘特图
+        gantt_path = os.path.join(images_dir, "gantt_chart.png")
+        plot_gantt_chart(schedule_log, save_path=gantt_path)
     else:
         # 多次仿真
         log_file_path = None
         if args.logfile:
             log_file_path = os.path.join(logs_dir, args.logfile)
         stats = run_multiple_simulations(
-            original_tasks, simulation_time, num_runs=args.runs,
-            verbose=args.verbose, log_filename=log_file_path
+            original_tasks, simulation_time,
+            num_runs=args.runs, verbose=args.verbose,
+            log_filename=log_file_path
         )
         print("\n=== Simulation Statistics ===")
         for task_id, stat in stats.items():
             print(f"Task {task_id}: Average WCRT = {stat['average']:.2f}, "
                   f"Median = {stat['median']}, Variance = {stat['variance']:.2f}, "
-                  f"95th Percentile = {stat['95th']}, Max WCRT = {stat['max']}")
-            
+                  f"95th Percentile = {stat['95th']}, Max WCRT = {stat['max']}") 
