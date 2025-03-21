@@ -7,15 +7,16 @@ from typing import List, Dict
 class Task:
     """Represents a periodic task with timing constraints"""
     def __init__(self, name: str, bcet: int, wcet: int, period: int, deadline: int, priority: int):
-        self.name = name
-        self.bcet = bcet
-        self.wcet = wcet
-        self.period = period
-        self.deadline = deadline
-        self.priority = priority
+        # Task parameters initialization
+        self.name = name  # Task identifier
+        self.bcet = bcet  # Best-case execution time
+        self.wcet = wcet  # Worst-case execution time
+        self.period = period  # Task period
+        self.deadline = deadline  # Relative deadline
+        self.priority = priority  # Priority (lower value = higher priority)
 
     def __repr__(self):
-        # 让任务打印时带上更多信息，如标准答案所示
+        # 让任务打印时带上更多信息，如标准答案所示 | Create detailed string representation
         utilization = self.wcet / self.period
         return (f"Task({self.name}, BCET={self.bcet}, WCET={self.wcet}, "
                 f"Period={self.period}, Deadline={self.deadline}, Utilization={utilization:.2f} "
@@ -36,16 +37,16 @@ class RTAAnalyzer:
         even if some tasks exceed their deadline.
         No exception is raised here.
         """
-        # 按优先级排序
+        # 按优先级排序 | Sort tasks by priority (ascending order)
         sorted_tasks = sorted(tasks, key=lambda x: x.priority)
         wcrt = {}
 
         for i, task in enumerate(sorted_tasks):
             hp_tasks = sorted_tasks[:i]  # higher-priority tasks only
-            R = task.wcet
+            R = task.wcet # Initial response time
             while True:
                 prev_R = R
-                # 干扰：ceil(R / T_j) * C_j
+                # 干扰：ceil(R / T_j) * C_j | Interference calculation
                 interference = sum(((prev_R + t.period - 1) // t.period) * t.wcet for t in hp_tasks)
                 R = task.wcet + interference
                 if R == prev_R:
@@ -54,6 +55,7 @@ class RTAAnalyzer:
         return wcrt
 
 def calculate_utilization(tasks: List[Task]) -> float:
+    # Calculate total CPU utilization
     return sum(task.wcet / task.period for task in tasks)
 
 def lcm(a, b):
@@ -63,6 +65,7 @@ def lcm_of_list(numbers):
     return reduce(lcm, numbers, 1)
 
 def load_tasks(filename: str) -> List[Task]:
+    # Load tasks from CSV file
     tasks = []
     with open(filename, 'r') as f:
         reader = csv.DictReader(f)
@@ -101,15 +104,15 @@ if __name__ == "__main__":
 
     # 4. Compute utilization
     utilization = calculate_utilization(tasks)
-    # 打印时保留小数
+    # 打印时保留小数 | Format utilization with 2 decimal places
     utilization_str = f"{utilization:.2f}"
-    # 或者只想显示整数 1
+    # 或者只想显示整数 | Round to integer for status display
     utilization_int = int(round(utilization))
 
     # 5. Run RTA analysis (no exception even if WCRT>deadline)
     rta_results = RTAAnalyzer.calculate_wcrt(tasks)
 
-    # 6. 判断是否有任何任务不可调度
+    # 6. 判断是否有任何任务不可调度 | Determine overall schedulability
     schedulable = True
     for task in tasks:
         if rta_results[task.name] > task.deadline:
@@ -134,10 +137,10 @@ if __name__ == "__main__":
     print("Task  WCRT   Deadline  Status")
     print("----  -----  --------  ------")
 
-    # 9. 自定义排序：T1, T2, ..., T10, T11
+    # 9. 自定义排序：T1, T2, ..., T10, T11 | Sort tasks numerically (T1, T2,...)
     sorted_tasks = sorted(tasks, key=lambda t: numeric_task_name(t.name))
 
-    # 10. 按顺序输出
+    # 10. 按顺序输出 | Format output results
     for task in sorted_tasks:
         wcrt_val = rta_results[task.name]
         status_char = "✓" if wcrt_val <= task.deadline else "✗"
