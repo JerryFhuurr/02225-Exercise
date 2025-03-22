@@ -1,0 +1,11 @@
+# requirements.txt
+
+# ---- Data analysis ----
+pandas
+
+# ---- Numerical computations ----
+numpy
+scipy
+
+# ---- Plotting and visualization ----
+matplotlib
