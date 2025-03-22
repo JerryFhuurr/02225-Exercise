@@ -1,4 +1,4 @@
-# Description: 从 CSV 文件中加载任务参数，使用 RTA 和 VSS 进行对比分析。
+# compare.py
 import sys
 import copy
 import os

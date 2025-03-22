@@ -1,4 +1,4 @@
-# Description: Fixed-Priority Scheduling Analysis Tool (modified)
+# rta.py
 import csv
 import argparse
 import math

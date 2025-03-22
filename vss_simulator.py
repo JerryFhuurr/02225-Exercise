@@ -1,4 +1,4 @@
-# Description: A simple simulator for Rate Monotonic SScheduling (RMS) with extended statistics and logging.
+# vss_simulator.py
 import math
 from functools import reduce
 import sys

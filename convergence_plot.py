@@ -1,4 +1,4 @@
-# Description: Generate convergence plot for VSS WCRT
+# convergence_plot.py
 import sys
 import copy
 import argparse
