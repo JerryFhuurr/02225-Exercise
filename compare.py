@@ -1,13 +1,21 @@
-#!/usr/bin/env python3
+# Description: 从 CSV 文件中加载任务参数，使用 RTA 和 VSS 进行对比分析。
 import sys
 import copy
-from rta import load_tasks, RTAAnalyzer, calculate_utilization
-from vss_simulator import load_tasks_from_csv, assign_alpha, lcm_of_list, run_multiple_simulations, plot_gantt_chart, rate_monotonic_scheduling
-import matplotlib.pyplot as plt
-import numpy as np
-import re
 import os
 import argparse
+import re
+import matplotlib.pyplot as plt
+import numpy as np
+
+from rta import load_tasks, RTAAnalyzer, calculate_utilization
+from vss_simulator import (
+    load_tasks_from_csv,
+    assign_alpha,
+    lcm_of_list,
+    run_multiple_simulations,
+    plot_gantt_chart,
+    rate_monotonic_scheduling
+)
 
 
 # 定义辅助函数，提取 "T10" 中的数字 10 用于排序
@@ -15,16 +23,7 @@ def numeric_task_name(task_name: str) -> int:
     # 假设任务名以 'T' 开头，后面是数字
     return int(re.sub(r"\D", "", task_name))
 
-def plot_comparison_chart(rta_results, stats, save_path="comparison_chart.png"):
-    """
-    绘制条形图对比每个任务的 RTA WCRT 与 VSS 平均 WCRT，
-    并保存图表到文件，同时弹出图窗显示图表。
-    
-    参数:
-      - rta_results: 字典，键为任务标识，值为 RTA 得到的 WCRT
-      - stats: 字典，键为任务标识，值为 VSS 仿真统计数据，其中 "average" 为平均 WCRT
-      - save_path: 保存图表的文件路径，默认为 "comparison_chart.png"
-    """
+def plot_comparison_chart(rta_results, stats, save_path="output/images/comparison_chart.png"):
     # 获取所有任务标识，按照 rta_results 的 key 排序
     tasks = sorted(rta_results.keys(), key=numeric_task_name)
 
@@ -65,18 +64,14 @@ def plot_comparison_chart(rta_results, stats, save_path="comparison_chart.png"):
     plt.show()   
  
 
-def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, outdir="output"):
+def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, logfile=False):
     # 打印运行次数信息
     print(f"Running simulation for {runs} runs...")
-    print(f"Output directory: {outdir}")
-    
-    # 如果主输出目录不存在，创建之
-    if not os.path.exists(outdir):
-        os.makedirs(outdir, exist_ok=True)
         
-    # 创建 images/ 和 logs/ 子目录
-    images_dir = os.path.join(outdir, "images")
-    logs_dir = os.path.join(outdir, "logs")
+    # 固定输出目录
+    images_dir = "output/images"
+    logs_dir   = "output/logs"
+    
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(logs_dir, exist_ok=True)
     
@@ -86,7 +81,7 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
     tasks_vss = load_tasks_from_csv(csv_filename, method)
 
     # 为 VSS 部分任务分配 CPU 负载因子 α
-    tasks_vss = assign_alpha(tasks_vss, U_target)
+    tasks_vss = assign_alpha(tasks_vss, U_target=U_target, method=method)
     # 仿真总时间默认按所有任务周期的最小公倍数计算
     simulation_time = lcm_of_list([task.period for task in tasks_vss])
     
@@ -100,12 +95,19 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
         gantt_path = os.path.join(images_dir, "gantt_chart.png")
         plot_gantt_chart(schedule_log, save_path=gantt_path)
     else:
+        # 多次仿真
+        # 若启用 --logfile，则写到 output/logs/compare.log
+        log_file_path = os.path.join(logs_dir, "compare.log") if logfile else None
+        
         # 多次仿真，输出扩展统计指标（平均、中位数、方差、最大值、95百分位）
         stats = run_multiple_simulations(
-            tasks_vss, simulation_time,
-            num_runs=runs, verbose=False,
-            log_filename=os.path.join(logs_dir, "compare.log")  # 日志文件放在 logs/ 下
+            tasks_vss,
+            simulation_time,
+            num_runs=runs,
+            verbose=False,
+            log_filename=log_file_path
         )
+        
         print("\n=== Comparison of RTA and VSS ===")
         
         # （A）先判断可调度性
@@ -146,7 +148,8 @@ def main():
     parser.add_argument("--method", choices=["workload", "truncnorm"], default="workload",
                         help="Execution time generation method")
     parser.add_argument("--runs", type=int, default=50, help="Number of simulation runs")
-    parser.add_argument("--outdir", type=str, default="output", help="Base directory to save images/logs")
+    parser.add_argument("--logfile", action="store_true",
+                        help="If set, enable logging to 'output/logs/compare.log'")
 
     args = parser.parse_args()
 
@@ -155,7 +158,7 @@ def main():
         U_target=args.U_target,
         method=args.method,
         runs=args.runs,
-        outdir=args.outdir
+        logfile=args.logfile
     )
 
 if __name__ == "__main__":

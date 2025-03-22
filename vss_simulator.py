@@ -1,3 +1,4 @@
+# Description: A simple simulator for Rate Monotonic SScheduling (RMS) with extended statistics and logging.
 import math
 from functools import reduce
 import sys
@@ -61,31 +62,32 @@ class Task:
         self.wcet = wcet
         self.method = method  # 选择执行时间计算方法
         self.alpha = 0.0  # 默认 CPU 负载因子
-        
-        # 计算任务执行时间 C
-        if self.method == "workload":
-            self.execution_time = generate_execution_time_workload(self.bcet, self.wcet, self.period, self.alpha)
-        elif self.method == "truncnorm":
-            self.execution_time = generate_execution_time_truncnorm(self.bcet, self.wcet)
 
+        self.execution_time = 0
         self.release_time = 0                 # task release time
-        self.remaining_time = self.execution_time  # task remaining execution time
+        self.remaining_time = 0  # task remaining execution time
         self.completion_time = None           # task completion time
         self.response_time = None             # task response time
         self.wcrt = 0
+        self.finish_time = 0  # 新增，用于记录任务本次完成时刻
 
-    def release_new_job(self, current_time):
-        """ Release a new task instance (new job) """
-        self.release_time = current_time
-        # 任务执行时间按选择的方法重新计算
+        # 预先计算一次
+        self.reset_execution_time()
+
+    def reset_execution_time(self):
+        """Compute the (new) execution_time for this job instance."""
         if self.method == "workload":
             self.execution_time = generate_execution_time_workload(self.bcet, self.wcet, self.period, self.alpha)
         elif self.method == "truncnorm":
             self.execution_time = generate_execution_time_truncnorm(self.bcet, self.wcet)
+        self.remaining_time = self.execution_time
 
-        self.remaining_time = self.execution_time  # Reset remaining time
-        self.completion_time = None  # Completion time not yet calculated
-        self.response_time = None  # Response time not yet calculated
+    def release_new_job(self, current_time):
+        """Release a new job of this task at current_time."""
+        self.release_time = current_time
+        self.reset_execution_time()
+        self.completion_time = None
+        self.response_time = None
     
     def is_ready(self, current_time):
         """ Check if the task is ready to execute """
@@ -96,11 +98,12 @@ class Task:
         self.remaining_time = max(0, self.remaining_time - time_units)  # Subtract time units
         return self.remaining_time == 0  # Return True if the task is finished
 
-    def calculate_response_time(self, current_time):
-        """ Calculate the response time of the task """
-        self.completion_time = current_time
+    def calculate_response_time(self, finish_time):
+        """Calculate response time = finish_time - release_time, and update wcrt."""
+        self.completion_time = finish_time
         self.response_time = self.completion_time - self.release_time
         self.wcrt = max(self.wcrt, self.response_time)
+        self.finish_time = finish_time  # 记录本次最终完成时刻
 
 
 # ----- 数据加载与 α 分配 -----
@@ -122,21 +125,13 @@ def load_tasks_from_csv(filename, method="workload"):
     return tasks
 
 
-def assign_alpha(tasks, U_target=None):
-    """
-    Compute the α (CPU load factor) of the task, which supports two cases:
-    1. If 'U_target' is given, normalize by 'T' such that Σ α_i ≈ U_target (may exceed 1).
-    2. If 'U_target' is not given, assign 'α_i' randomly, and normalize to ensure that Σ α_i = 1 (does not exceed 100% CPU).
-
-    Parameters:
-    - tasks (list): indicates a list of tasks. Each task contains the "period" key.
-    - U_target (float, optional): indicates the target CPU usage. The value range is 0,1.
-
-    Back:
-    - Updated 'tasks' including' alpha '.
-    """
+def assign_alpha(tasks, U_target=None, method="workload"):
+    if method != "workload":
+        # 如果不是 workload，就直接返回，不做任何 alpha 分配
+        return tasks
+    
     n = len(tasks)
-    if U_target:  
+    if U_target is not None:  
         # If 'U_target' is given, 'α' is normalized by 'T'
         total_T = sum(task.period for task in tasks)
         for task in tasks:
@@ -195,6 +190,11 @@ def rate_monotonic_scheduling(tasks, simulation_time, verbose=False, log_file=No
             if log_file:
                 log_file.write(msg + "\n")
             if finished:
+                # 任务完成时刻
+                finish_t = current_time + 1
+                current_job.calculate_response_time(finish_t)
+                # 记录 finish_time
+                current_job.finish_time = finish_t
                 current_job.calculate_response_time(current_time + 1)
                 active_jobs.remove(current_job)
                 msg = f"[Time {current_time+1}] Task {current_job.task_id} Completed, Response: {current_job.response_time}"
@@ -249,22 +249,14 @@ def run_single_simulation(tasks, simulation_time, verbose=False, log_file=None):
     """
     # 调用已有的调度函数，运行仿真
     rate_monotonic_scheduling(tasks, simulation_time, verbose=verbose, log_file=log_file)
-    # 收集每个任务的 WCRT
-    result = {task.task_id: task.wcrt for task in tasks}
+    result = {}
+    for t in tasks:
+        # 这里 t.wcrt、t.finish_time 就是本轮的最终值
+        result[t.task_id] = (t.wcrt, t.finish_time)
     return result
 
 
 def run_multiple_simulations(original_tasks, simulation_time, num_runs=10, verbose=False, log_filename=None):
-    """
-    进行多次仿真运行，统计每个任务的平均 WCRT、方差及最大 WCRT。
-    
-    Parameters:
-      - original_tasks: 原始任务列表（从 CSV 读取后的任务对象）
-      - simulation_time: 仿真总时间
-      - num_runs: 仿真运行次数
-    Returns:
-      - stats: 一个字典，格式例如 { task_id: {"average": avg, "variance": var, "max": max_wcrt}, ... }
-    """
     # 用来收集每个任务多次仿真得到的 WCRT 列表
     results = {task.task_id: [] for task in original_tasks}
     
@@ -278,7 +270,7 @@ def run_multiple_simulations(original_tasks, simulation_time, num_runs=10, verbo
                 log_file.write(f"=== Run {run+1} ===\n")
         tasks_copy = copy.deepcopy(original_tasks)
         run_result = run_single_simulation(tasks_copy, simulation_time, verbose=verbose, log_file=log_file)
-        for task_id, wcrt in run_result.items():
+        for task_id, (wcrt,finish_time) in run_result.items():
             results[task_id].append(wcrt)
     if log_file:
         log_file.close()
@@ -309,33 +301,31 @@ if __name__ == "__main__":
     parser.add_argument("--runs", type=int, default=1, help="Number of simulation runs")
     parser.add_argument("--simtime", type=int, default=None, help="Simulation time (if not provided, use LCM of task periods)")
     parser.add_argument("--verbose", action="store_true", help="Output detailed log to console")
-    parser.add_argument("--plot", action="store_true", help="Generate Gantt chart for single simulation")
-    parser.add_argument("--logfile", default=None, help="File to save detailed simulation log")
-    parser.add_argument("--outdir", type=str, default="output", help="Base directory to save images/logs")
-
+    # 改动点：将 --logfile 改成布尔开关（action="store_true"）
+    parser.add_argument("--logfile", action="store_true", help="If set, enable logging to a default file 'sim.log'")
     
     args = parser.parse_args()
-    
-    # 1. 如果主输出目录不存在，创建之
-    if not os.path.exists(args.outdir):
-        os.makedirs(args.outdir, exist_ok=True)
 
     # 2. 创建 images/ 和 logs/ 子目录
-    images_dir = os.path.join(args.outdir, "images")
-    logs_dir = os.path.join(args.outdir, "logs")
+    images_dir = "output/images"
+    logs_dir = "output/logs"
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(logs_dir, exist_ok=True)
 
     # 载入任务及分配 α
     original_tasks = load_tasks_from_csv(args.csv_filename, args.method)
-    original_tasks = assign_alpha(original_tasks, args.U_target)
+    assign_alpha(original_tasks, args.U_target, method=args.method)
     
-    # 根据方法重新计算执行时间
+    # 重新计算执行时间
     for task in original_tasks:
         if args.method == "workload":
-            task.execution_time = generate_execution_time_workload(task.bcet, task.wcet, task.period, task.alpha)
+            task.execution_time = generate_execution_time_workload(
+                task.bcet, task.wcet, task.period, task.alpha
+            )
         else:
-            task.execution_time = generate_execution_time_truncnorm(task.bcet, task.wcet)
+            task.execution_time = generate_execution_time_truncnorm(
+                task.bcet, task.wcet
+            )
     
     # 计算仿真时间
     if args.simtime:
@@ -343,32 +333,39 @@ if __name__ == "__main__":
     else:
         simulation_time = lcm_of_list([task.period for task in original_tasks])
     print(f"Simulation Time: {simulation_time}")
+    
+    # 判断是否启用日志
+    log_file_path = None
+    if args.logfile:
+        # 用户只要写了 --logfile，就把日志写到 'sim.log'
+        log_file_path = os.path.join(logs_dir, "sim.log")
 
     # 如果 runs==1, 单次仿真并自动保存甘特图
     if args.runs == 1:
-        log_file_path = None
-        if args.logfile:
-            log_file_path = os.path.join(logs_dir, args.logfile)
         schedule_log = rate_monotonic_scheduling(
             original_tasks, simulation_time,
             verbose=args.verbose,
             log_file=(open(log_file_path, "w") if log_file_path else None)
         )
-        # 无需再判断 args.plot，始终自动保存甘特图
+        # 自动保存甘特图
         gantt_path = os.path.join(images_dir, "gantt_chart.png")
         plot_gantt_chart(schedule_log, save_path=gantt_path)
     else:
         # 多次仿真
-        log_file_path = None
-        if args.logfile:
-            log_file_path = os.path.join(logs_dir, args.logfile)
         stats = run_multiple_simulations(
-            original_tasks, simulation_time,
-            num_runs=args.runs, verbose=args.verbose,
+            original_tasks,
+            simulation_time,
+            num_runs=args.runs,
+            verbose=args.verbose,
             log_filename=log_file_path
         )
         print("\n=== Simulation Statistics ===")
         for task_id, stat in stats.items():
-            print(f"Task {task_id}: Average WCRT = {stat['average']:.2f}, "
-                  f"Median = {stat['median']}, Variance = {stat['variance']:.2f}, "
-                  f"95th Percentile = {stat['95th']}, Max WCRT = {stat['max']}") 
+            print(
+                f"Task {task_id}: Average WCRT = {stat['average']:.2f}, "
+                f"Median = {stat['median']}, Variance = {stat['variance']:.2f}, "
+                f"95th Percentile = {stat['95th']}, Max WCRT = {stat['max']}"
+            )
+            
+            
+            
