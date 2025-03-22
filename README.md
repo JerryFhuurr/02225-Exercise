@@ -15,7 +15,7 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 
 ## 2. Directory Structure
 
-<pre class="!overflow-visible" data-start="920" data-end="1488"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre"><span><span>project/
+project/
 │
 ├── data/
 │   ├── Full_Utilization_NonUnique_Periods_taskset.csv
@@ -42,7 +42,6 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 ├── requirements.txt
 ├── rta.py
 └── vss_simulator.py
-</span></span></code></div></div></pre>
 
 * ​**data/**​: Contains CSV test case files defining tasks (BCET, WCET, Period, Deadline, Priority, etc.).
 * ​**output/**​: Directory where all generated images and logs are stored.
@@ -69,14 +68,12 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 
 1. Clone or download this project folder.
 2. (Optional but recommended) Create a virtual environment:
-   <pre class="!overflow-visible" data-start="2731" data-end="2858"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python -m venv venv
-   </span><span>source</span><span> venv/bin/activate  </span><span># Linux/macOS</span><span>
-   </span><span># or</span><span>
-   venv\Scripts\activate     </span><span># Windows</span><span>
-   </span></span></code></div></div></pre>
+    python -m venv venv
+    source venv/bin/activate  # Linux/macOS
+    # or
+    venv\Scripts\activate     # Windows
 3. Install required packages:
-   <pre class="!overflow-visible" data-start="2892" data-end="2941"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>pip install -r requirements.txt
-   </span></span></code></div></div></pre>
+    pip install -r requirements.txt
 
 ---
 
@@ -86,16 +83,11 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 
 * ​**Purpose**​: Runs Response-Time Analysis (RTA) on a CSV file of tasks and prints the results.
 * ​**Usage**​:
-  
-  <pre class="!overflow-visible" data-start="3106" data-end="3152"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python rta.py &lt;input_file.csv&gt;
-  </span></span></code></div></div></pre>
+  python rta.py &lt;input_file.csv&gt;
 * ​**Example**​:
-  
-  <pre class="!overflow-visible" data-start="3170" data-end="3212"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python rta.py data/TC1.csv
-  </span></span></code></div></div></pre>
+  python rta.py data/TC1.csv
   
   This will:
-  
   1. Load tasks from `TC1.csv`
   2. Compute the WCRT of each task using RTA
   3. Print out whether the set is schedulable (i.e., WCRT <= Deadline for all tasks)
@@ -105,8 +97,7 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 
 * ​**Purpose**​: Simulates tasks under Rate Monotonic scheduling with variable execution times. Can run single or multiple simulations.
 * ​**Usage**​:
-  <pre class="!overflow-visible" data-start="3609" data-end="3673"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python vss_simulator.py &lt;csv_filename&gt; [options]
-  </span></span></code></div></div></pre>
+  python vss_simulator.py &lt;csv_filename&gt; [options]
 * ​**Key Options**​:
   * `--U_target`: Target CPU utilization (0 < U < 1) used for the “workload” method of execution-time generation.
   * `--method`: Execution time generation method: `workload` (default) or `truncnorm`.
@@ -117,20 +108,17 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 * ​**Examples**​:
   1. **Single run** with default method (`workload`) and automatically computed simulation time:
      
-     <pre class="!overflow-visible" data-start="4258" data-end="4325"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python vss_simulator.py data/TC1.csv --runs 1
-     </span></span></code></div></div></pre>
+     python vss_simulator.py data/TC1.csv --runs 1
      
      This will produce:
-     
      * A Gantt chart saved to `output/images/gantt_chart.png`
      * Logs in `output/logs/sim.log` if `--logfile` is used.
+
   2. **Multiple runs** (e.g., 50 times) with target CPU utilization of 0.8:
      
-     <pre class="!overflow-visible" data-start="4559" data-end="4670"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python vss_simulator.py data/TC1.csv --U_target 0.8 --method workload --runs 50 --logfile
-     </span></span></code></div></div></pre>
+     python vss_simulator.py data/TC1.csv --U_target 0.8 --method workload --runs 50 --logfile
      
      This will:
-     
      * Run 50 simulations
      * Generate logs in `output/logs/sim.log`
      * Print out extended statistics (average, variance, max, etc.)
@@ -138,12 +126,11 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 ### 4.3 `compare.py`
 
 * ​**Purpose**​: Compares **RTA** vs. **VSS** results for each task, showing WCRT from RTA and average WCRT from multiple simulation runs. Produces a bar chart comparison.
+
 * ​**Usage**​:
-  
-  <pre class="!overflow-visible" data-start="5040" data-end="5098"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python compare.py &lt;csv_filename&gt; [options]
-  </span></span></code></div></div></pre>
+  python compare.py &lt;csv_filename&gt; [options]
+
 * ​**Key Options**​:
-  
   * `--U_target`: Target CPU utilization for the VSS “workload” method.
   * `--method`: Execution time generation method: `workload` or `truncnorm`.
   * `--simtime`: Simulation time (default = LCM of periods).
@@ -151,11 +138,9 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
   * `--logfile`: If set, write logs to `output/logs/compare.log`.
 * ​**Example**​:
   
-  <pre class="!overflow-visible" data-start="5465" data-end="5564"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python compare.py data/TC1.csv --U_target 0.6 --method workload --runs 50 --logfile
-  </span></span></code></div></div></pre>
+  python compare.py data/TC1.csv --U_target 0.6 --method workload --runs 50 --logfile
   
   This will:
-  
   1. Run RTA on `TC1.csv`.
   2. Run 50 VSS simulations on the same CSV.
   3. Compare each task’s WCRT (RTA vs. average from simulation).
@@ -165,23 +150,17 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 
 * ​**Purpose**​: Focuses on the **convergence** of the worst-case response times in simulation over multiple runs. It plots the **cumulative maximum** WCRT after each simulation run, overlaid with the RTA WCRT as a dashed line.
 * ​**Usage**​:
-  
-  <pre class="!overflow-visible" data-start="6087" data-end="6154"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python convergence_plot.py &lt;csv_filename&gt; [options]
-  </span></span></code></div></div></pre>
+  python convergence_plot.py &lt;csv_filename&gt; [options]
 * ​**Key Options**​:
-  
   * `--U_target`: Target CPU utilization for “workload” method.
   * `--method`: Execution time generation method: `workload` or `truncnorm`.
   * `--runs`: Number of simulation runs (default=1000).
   * `--simtime`: Simulation time (default = LCM of periods).
   * `--logfile`: If set, write logs to `output/logs/convergence.log`.
 * ​**Example**​:
-  
-  <pre class="!overflow-visible" data-start="6519" data-end="6628"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python convergence_plot.py data/TC1.csv --U_target 0.7 --method workload --runs 500 --logfile
-  </span></span></code></div></div></pre>
+  python convergence_plot.py data/TC1.csv --U_target 0.7 --method workload --runs 500 --logfile
   
   This will:
-  
   1. Load tasks and run RTA.
   2. Perform 500 simulation runs, each time measuring new WCRT if it exceeds the previous maximum.
   3. Plot a line for each task’s cumulative max WCRT vs. the run index, with RTA as a dashed line.
@@ -196,8 +175,7 @@ The code is written in Python and uses ​**pandas**​, ​**numpy**​, ​**m
 
 You can use these files directly with any of the scripts above. Each file contains columns:
 
-<pre class="!overflow-visible" data-start="7421" data-end="7473"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="flex items-center text-token-text-secondary px-4 py-2 text-xs font-sans justify-between h-9 bg-token-sidebar-surface-primary dark:bg-token-main-surface-secondary select-none rounded-t-[5px]">arduino</div><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre"><span><span>Task</span><span>, BCET, WCET, Period, Deadline, Priority
-</span></span></code></div></div></pre>
+Task, BCET, WCET, Period, Deadline, Priority
 
 where **Task** is a label (e.g., T1, T2, …).
 
@@ -222,24 +200,21 @@ A typical workflow might be:
 
 1. **Run RTA** on a specific CSV:
    
-   <pre class="!overflow-visible" data-start="8391" data-end="8435"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python rta.py data/TC1.csv
-   </span></span></code></div></div></pre>
+   python rta.py data/TC1.csv
+
 2. **Simulate** the same CSV for multiple runs:
    
-   <pre class="!overflow-visible" data-start="8487" data-end="8561"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python vss_simulator.py data/TC1.csv --runs 50 --logfile
-   </span></span></code></div></div></pre>
+   python vss_simulator.py data/TC1.csv --runs 50 --logfile
    
    * Check `output/logs/sim.log` for details and `output/images/gantt_chart.png` if `runs=1`.
 3. **Compare** RTA vs. VSS results:
    
-   <pre class="!overflow-visible" data-start="8695" data-end="8763"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python compare.py data/TC1.csv --runs 50 --logfile
-   </span></span></code></div></div></pre>
+   python compare.py data/TC1.csv --runs 50 --logfile
    
    * View `comparison_chart.png` for a bar chart comparison.
 4. **Check Convergence** of WCRT:
    
-   <pre class="!overflow-visible" data-start="8862" data-end="8940"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>python convergence_plot.py data/TC1.csv --runs 500 --logfile
-   </span></span></code></div></div></pre>
+   python convergence_plot.py data/TC1.csv --runs 500 --logfile
    
    * View `convergence.png` to see if simulation WCRTs are approaching the RTA limit.
 
@@ -253,10 +228,8 @@ If you need to submit this project:
 2. Include this `README.md`.
 3. Provide instructions to the grader or colleague to run:
    
-   <pre class="!overflow-visible" data-start="9279" data-end="9368"><div class="contain-inline-size rounded-md border-[0.5px] border-token-border-medium relative bg-token-sidebar-surface-primary"><div class="sticky top-9"><div class="absolute bottom-0 right-0 flex h-9 items-center pr-2"><div class="flex items-center rounded bg-token-sidebar-surface-primary px-2 font-sans text-xs text-token-text-secondary dark:bg-token-main-surface-secondary"><span class="" data-state="closed"></span></div></div></div><div class="overflow-y-auto p-4" dir="ltr"><code class="!whitespace-pre language-bash"><span><span>pip install -r requirements.txt
+   pip install -r requirements.txt
    python rta.py data/TC1.csv
-   </span><span># etc.</span><span>
-   </span></span></code></div></div></pre>
    
    for any script you wish to demonstrate.
 
