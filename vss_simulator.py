@@ -259,21 +259,24 @@ def run_single_simulation(tasks, simulation_time, verbose=False, log_file=None):
 def run_multiple_simulations(original_tasks, simulation_time, num_runs=10, verbose=False, log_filename=None):
     # 用来收集每个任务多次仿真得到的 WCRT 列表
     results = {task.task_id: [] for task in original_tasks}
-    
-    # 如果启用日志记录，则打开日志文件
-    log_file = open(log_filename, "w") if log_filename else None
-    
+
     for run in range(num_runs):
         if verbose:
             print(f"\n=== Run {run+1} ===")
-            if log_file:
-                log_file.write(f"=== Run {run+1} ===\n")
-        tasks_copy = copy.deepcopy(original_tasks)
-        run_result = run_single_simulation(tasks_copy, simulation_time, verbose=verbose, log_file=log_file)
-        for task_id, (wcrt,finish_time) in run_result.items():
+        
+        # 如果启用日志记录，则每次 run 独立写入（覆盖之前的日志）
+        if log_filename:
+            with open(log_filename, "w") as log_file:
+                if verbose:
+                    log_file.write(f"=== Run {run+1} ===\n")
+                tasks_copy = copy.deepcopy(original_tasks)
+                run_result = run_single_simulation(tasks_copy, simulation_time, verbose=verbose, log_file=log_file)
+        else:
+            tasks_copy = copy.deepcopy(original_tasks)
+            run_result = run_single_simulation(tasks_copy, simulation_time, verbose=verbose, log_file=None)
+        
+        for task_id, (wcrt, finish_time) in run_result.items():
             results[task_id].append(wcrt)
-    if log_file:
-        log_file.close()
     
     # 计算统计指标
     stats = {}

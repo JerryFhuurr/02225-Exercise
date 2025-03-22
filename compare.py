@@ -64,7 +64,7 @@ def plot_comparison_chart(rta_results, stats, save_path="output/images/compariso
     plt.show()   
  
 
-def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, logfile=False):
+def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, logfile=False, simtime=None):
     # 打印运行次数信息
     print(f"Running simulation for {runs} runs...")
         
@@ -82,8 +82,14 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
 
     # 为 VSS 部分任务分配 CPU 负载因子 α
     tasks_vss = assign_alpha(tasks_vss, U_target=U_target, method=method)
-    # 仿真总时间默认按所有任务周期的最小公倍数计算
-    simulation_time = lcm_of_list([task.period for task in tasks_vss])
+    
+    # 如果用户指定了 simtime，则使用，否则计算最小公倍数
+    if simtime is None:
+        simulation_time = lcm_of_list([task.period for task in tasks_vss])
+    else:
+        simulation_time = simtime
+        
+    print(f"Simulation Time: {simulation_time}")
     
     # 运行 RTA 分析（任务按优先级排序，RTA 使用 task.name 作为标识）
     rta_results = RTAAnalyzer.calculate_wcrt(sorted(tasks_rta, key=lambda t: t.priority))
@@ -147,6 +153,7 @@ def main():
     parser.add_argument("--U_target", type=float, default=None, help="Target CPU utilization (0,1)")
     parser.add_argument("--method", choices=["workload", "truncnorm"], default="workload",
                         help="Execution time generation method")
+    parser.add_argument("--simtime", type=int, default=None, help="Total simulation time to use instead of LCM of task periods")
     parser.add_argument("--runs", type=int, default=50, help="Number of simulation runs")
     parser.add_argument("--logfile", action="store_true",
                         help="If set, enable logging to 'output/logs/compare.log'")
@@ -154,12 +161,13 @@ def main():
     args = parser.parse_args()
 
     compare_rta_vs_vss(
-        csv_filename=args.csv_filename,
-        U_target=args.U_target,
-        method=args.method,
-        runs=args.runs,
-        logfile=args.logfile
-    )
+    csv_filename=args.csv_filename,
+    U_target=args.U_target,
+    method=args.method,
+    runs=args.runs,
+    logfile=args.logfile,
+    simtime=args.simtime
+)
 
 if __name__ == "__main__":
     main()

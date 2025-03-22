@@ -133,7 +133,7 @@ def plot_convergence(cumulative_max, num_runs, rta_results, save_path="output/im
            bbox_to_anchor=(1.0, 1), loc="upper left")
     
     # 设置 x 轴范围
-    plt.xlim(0, num_runs)
+    plt.xlim(1, num_runs)
 
     # 找到所有曲线和 RTA 的最大值
     max_wcrt_data = 0
