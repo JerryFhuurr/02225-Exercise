@@ -17,7 +17,7 @@ class Task:
         self.priority = priority  # Priority (lower value = higher priority)
 
     def __repr__(self):
-        # 让任务打印时带上更多信息，如标准答案所示 | Create detailed string representation
+        # Create detailed string representation
         utilization = self.wcet / self.period
         return (f"Task({self.name}, BCET={self.bcet}, WCET={self.wcet}, "
                 f"Period={self.period}, Deadline={self.deadline}, Utilization={utilization:.2f} "
@@ -26,7 +26,9 @@ class Task:
 def detect_scheduling_algorithm(tasks: List[Task]) -> str:
     """Detects if the scheduling algorithm is RM or DM"""
     if all(task.deadline == task.period for task in tasks):
+        # If all tasks have the same deadline and period, return "RateMonotonic"
         return "RateMonotonic"
+    # Otherwise, return "DeadlineMonotonic"
     return "DeadlineMonotonic"
 
 class RTAAnalyzer:
@@ -38,7 +40,7 @@ class RTAAnalyzer:
         even if some tasks exceed their deadline.
         No exception is raised here.
         """
-        # 按优先级排序 | Sort tasks by priority (ascending order)
+        # Sort tasks by priority (ascending order)
         sorted_tasks = sorted(tasks, key=lambda x: x.priority)
         wcrt = {}
 
@@ -82,11 +84,7 @@ def load_tasks(filename: str) -> List[Task]:
     return tasks
 
 def numeric_task_name(task_name: str) -> int:
-    """
-    提取任务名中的数字部分，用于自定义排序：
-    例如 'T1' -> 1, 'T10' -> 10, 'T11' -> 11, 'T2' -> 2
-    """
-    # 假设任务名以 'T' 开头，后面是数字
+    # Extract numeric value from task
     return int(task_name.lstrip("T"))
 
 if __name__ == "__main__":
@@ -105,15 +103,15 @@ if __name__ == "__main__":
 
     # 4. Compute utilization
     utilization = calculate_utilization(tasks)
-    # 打印时保留小数 | Format utilization with 2 decimal places
+    # Format utilization with 2 decimal places
     utilization_str = f"{utilization:.2f}"
-    # 或者只想显示整数 | Round to integer for status display
+    # Round to integer for status display
     utilization_int = int(round(utilization))
 
     # 5. Run RTA analysis (no exception even if WCRT>deadline)
     rta_results = RTAAnalyzer.calculate_wcrt(tasks)
 
-    # 6. 判断是否有任何任务不可调度 | Determine overall schedulability
+    # 6. Determine overall schedulability
     schedulable = True
     for task in tasks:
         if rta_results[task.name] > task.deadline:
@@ -138,14 +136,14 @@ if __name__ == "__main__":
     print("Task  WCRT   Deadline  Status")
     print("----  -----  --------  ------")
 
-    # 9. 自定义排序：T1, T2, ..., T10, T11 | Sort tasks numerically (T1, T2,...)
+    # 9. Sort tasks numerically (T1, T2,...)
     sorted_tasks = sorted(tasks, key=lambda t: numeric_task_name(t.name))
 
-    # 10. 按顺序输出 | Format output results
+    # 10. Format output results
     for task in sorted_tasks:
         wcrt_val = rta_results[task.name]
         status_char = "✓" if wcrt_val <= task.deadline else "✗"
-        # 左边留1格空，保证与“标准答案”对齐
-        # Task名占4格宽度，如 " T1 ", " T2 ", "T10"
+        # Leave 1 space to the left to ensure alignment with the "standard answer"
+        # Task name takes 4 space width, such as "T1 ", "T2 ", "T10"
         print(f" {task.name:<4} {wcrt_val:<6.1f} {task.deadline:<8} {status_char}")
     print("----  -----  --------  ------")
