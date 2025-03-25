@@ -35,38 +35,6 @@ def generate_execution_time_uniform(bcet: int, wcet: int) -> int:
     return random.randint(bcet, wcet)
 
 
-def generate_execution_time_workload(bcet: int, wcet: int, period: int, alpha: float) -> int:
-    """
-    Calculate the task execution time 'C' :
-    - `C = α * T`
-    - Make sure `C ∈ [1, WCET]`
-        
-    Parameters:
-    - period (int): Task period (T)
-    - alpha (float): load Factor (CPU Utilization Factor)
-    """
-    execution_time = alpha * period
-    # Return the execution time, ensuring it is within the range of 1 and WCET
-    return max(1, min(wcet, round(execution_time)))
-
-
-def generate_execution_time_truncnorm(bcet: int, wcet: int) -> int:
-    """ Generate a random execution time using a truncated normal distribution """
-    # If the best case execution time (bcet) is equal to the worst case execution time (wcet), return the bcet
-    if bcet == wcet:  
-            return max(1, bcet)
-    # Calculate the mean of the truncated normal distribution
-    mean = (bcet + wcet) / 2
-    # Calculate the standard deviation of the truncated normal distribution
-    std_dev = max((wcet - bcet) / 3, 0.1)  
-    # Calculate the lower and upper bounds of the truncated normal distribution
-    a, b = (bcet - mean) / std_dev, (wcet - mean) / std_dev
-    # Generate a random execution time using the truncated normal distribution
-    execution_time = round(truncnorm.rvs(a, b, loc=mean, scale=std_dev))
-    # Return the execution time, ensuring it is between 1 and the wcet
-    return max(1, min(wcet, execution_time))
-
-
 class Task:
     """ Task Class """
     def __init__(self, task_id, bcet, wcet, period, deadline, priority, method="workload"):
@@ -77,8 +45,6 @@ class Task:
         self.priority = priority
         self.bcet = bcet
         self.wcet = wcet
-        self.method = method  
-        self.alpha = 0.0  
 
         # Initialize the task's execution time, release time, remaining time, completion time, response time, wcrt, and finish time
         self.execution_time = 0
@@ -91,15 +57,10 @@ class Task:
 
         # Reset the execution time of the task
         self.reset_execution_time()
-
+        
     def reset_execution_time(self):
-        """Compute the (new) execution_time for this job instance."""
-        if self.method == "workload":
-            self.execution_time = generate_execution_time_workload(self.bcet, self.wcet, self.period, self.alpha)
-        elif self.method == "truncnorm":
-            self.execution_time = generate_execution_time_truncnorm(self.bcet, self.wcet)
-        elif self.method == "uniform":
-            self.execution_time = generate_execution_time_uniform(self.bcet, self.wcet)
+        """Compute the new execution_time for this job instance using uniform distribution."""
+        self.execution_time = generate_execution_time_uniform(self.bcet, self.wcet)
         self.remaining_time = self.execution_time
 
         
@@ -130,7 +91,7 @@ class Task:
         self.finish_time = finish_time
 
 
-def load_tasks_from_csv(filename, method="workload"):
+def load_tasks_from_csv(filename):
     """ Load task list from CSV file with selected execution time method """
     df = pd.read_csv(filename)
     tasks = []
@@ -143,39 +104,13 @@ def load_tasks_from_csv(filename, method="workload"):
             wcet=row["WCET"],
             period=row["Period"],
             deadline=row["Deadline"],
-            priority=row["Priority"],
-            method=method  
+            priority=row["Priority"]
         )
         # Add the Task object to the list
         tasks.append(task)
     # Return the list of Task objects
     return tasks
 
-
-def assign_alpha(tasks, U_target=None, method="workload"):
-    # Check if the method is not "workload"
-    if method != "workload":
-        return tasks
-    
-    n = len(tasks)
-    # Check if U_target is not None
-    if U_target is not None:  
-        
-        total_T = sum(task.period for task in tasks)
-        # Calculate the alpha value for each task
-        for task in tasks:
-            task.alpha = (task.period / total_T) * U_target  
-    else:
-        alphas = np.random.rand(n)
-        # Normalize the alpha values
-        alphas = alphas / alphas.sum()  
-        # Assign the alpha values to each task
-        for task, alpha in zip(tasks, alphas):
-            task.alpha = alpha
-    
-        # Print the total CPU load
-        print(f"Total CPU load: Σα = {sum(task.alpha for task in tasks):.2f}")
-    return tasks
 
 def advance_time(current_time, job_release_times, active_jobs):
     """ Advance time to the next event """
@@ -363,11 +298,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VSS Simulator with extended statistics and logging")
     parser.add_argument("csv_filename", help="CSV file containing task parameters")
     parser.add_argument("--U_target", type=float, default=None, help="Target CPU utilization (0,1)")
-    parser.add_argument("--method", choices=["workload", "truncnorm", "uniform"], default="uniform", help="Execution time generation method")
     parser.add_argument("--runs", type=int, default=1, help="Number of simulation runs")
     parser.add_argument("--simtime", type=int, default=None, help="Simulation time (if not provided, use LCM of task periods)")
     parser.add_argument("--verbose", action="store_true", help="Output detailed log to console")
-    
     parser.add_argument("--logfile", action="store_true", help="If set, enable logging to a default file 'sim.log'")
     
     args = parser.parse_args()
@@ -377,16 +310,10 @@ if __name__ == "__main__":
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(logs_dir, exist_ok=True)
 
-    original_tasks = load_tasks_from_csv(args.csv_filename, args.method)
-    assign_alpha(original_tasks, args.U_target, method=args.method)
+    original_tasks = load_tasks_from_csv(args.csv_filename)
     
     for task in original_tasks:
-        if args.method == "workload":
-            task.execution_time = generate_execution_time_workload(task.bcet, task.wcet, task.period, task.alpha)
-        elif args.method == "truncnorm":
-            task.execution_time = generate_execution_time_truncnorm(task.bcet, task.wcet)
-        elif args.method == "uniform":
-            task.execution_time = generate_execution_time_uniform(task.bcet, task.wcet)
+        task.execution_time = generate_execution_time_uniform(task.bcet, task.wcet)
     
     if args.simtime:
         simulation_time = args.simtime

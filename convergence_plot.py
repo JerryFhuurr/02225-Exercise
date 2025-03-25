@@ -10,7 +10,6 @@ import statistics
 
 from vss_simulator import (
     load_tasks_from_csv,
-    assign_alpha,
     lcm_of_list,
     run_single_simulation
 )
@@ -165,10 +164,6 @@ def main():
     # Create an argument parser to parse command line arguments
     parser = argparse.ArgumentParser(description="Generate convergence plot for VSS WCRT.")
     parser.add_argument("csv_filename", help="CSV file containing task parameters")
-    parser.add_argument("--U_target", type=float, default=None,
-                        help="Target CPU utilization (0,1) used only if method=workload")
-    parser.add_argument("--method", choices=["workload", "truncnorm", "uniform"], default="uniform",
-                        help="Execution time generation method for VSS tasks")
     parser.add_argument("--runs", type=int, default=1000,
                         help="Number of simulation runs for convergence")
     parser.add_argument("--simtime", type=int, default=None,
@@ -186,10 +181,7 @@ def main():
 
     # Load tasks from the CSV file
     try:
-        tasks_vss = load_tasks_from_csv(args.csv_filename, args.method)
-        
-        # Assign alpha values to the tasks
-        tasks_vss = assign_alpha(tasks_vss, args.U_target, method=args.method)
+        tasks_vss = load_tasks_from_csv(args.csv_filename)
     except Exception as e:
         # Print an error message if there is an issue loading the tasks
         print(f"Error loading tasks from CSV: {e}")
@@ -251,7 +243,7 @@ def main():
 
     # Save the convergence plot
     save_path = os.path.join(images_dir, "convergence.png")
-    extra_title = f"(U_target={args.U_target}, method={args.method}, runs={args.runs})"
+    extra_title = f"runs={args.runs})"
     plot_convergence(cumulative_max, args.runs, rta_results,
                      save_path=save_path, extra_title=extra_title)
 

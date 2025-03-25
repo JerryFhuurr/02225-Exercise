@@ -10,7 +10,6 @@ import numpy as np
 from rta import load_tasks, RTAAnalyzer, calculate_utilization
 from vss_simulator import (
     load_tasks_from_csv,
-    assign_alpha,
     lcm_of_list,
     run_multiple_simulations,
     plot_gantt_chart,
@@ -92,10 +91,7 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
     
     # Load the tasks from the csv file
     tasks_rta = load_tasks(csv_filename)
-    tasks_vss = load_tasks_from_csv(csv_filename, method)
-
-    # Assign alpha values to the tasks
-    tasks_vss = assign_alpha(tasks_vss, U_target=U_target, method=method)
+    tasks_vss = load_tasks_from_csv(csv_filename)
     
     # Set the simulation time
     if simtime is None:
@@ -115,10 +111,8 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
         gantt_path = os.path.join(images_dir, "gantt_chart.png")
         plot_gantt_chart(schedule_log, save_path=gantt_path)
     else:
-        
         # Set the log file path
         log_file_path = os.path.join(logs_dir, "compare.log") if logfile else None
-        
         # Run multiple simulations
         stats = run_multiple_simulations(
             tasks_vss,
@@ -175,7 +169,6 @@ def main():
     parser = argparse.ArgumentParser(description="Compare RTA and VSS with optional Gantt chart generation")
     parser.add_argument("csv_filename", help="CSV file containing task parameters")
     parser.add_argument("--U_target", type=float, default=None, help="Target CPU utilization (0,1)")
-    parser.add_argument("--method", choices=["workload", "truncnorm", "uniform"], default="uniform", help="Execution time generation method")
     parser.add_argument("--simtime", type=int, default=None, help="Total simulation time to use instead of LCM of task periods")
     parser.add_argument("--runs", type=int, default=50, help="Number of simulation runs")
     parser.add_argument("--logfile", action="store_true",
@@ -188,7 +181,6 @@ def main():
     compare_rta_vs_vss(
     csv_filename=args.csv_filename,
     U_target=args.U_target,
-    method=args.method,
     runs=args.runs,
     logfile=args.logfile,
     simtime=args.simtime
