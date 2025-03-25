@@ -1,4 +1,4 @@
-
+# vss_simulator.py
 import math
 from functools import reduce
 import sys
@@ -12,18 +12,27 @@ import logging
 import statistics
 import logging
 import os
+import random
 
 
 def lcm(a, b):
     """ Calculate the least common multiple (LCM) of two numbers """
-    # Calculate the absolute value of the product of the two numbers
-    # Divide the absolute value of the product by the greatest common divisor (GCD) of the two numbers
     return abs(a * b) // math.gcd(a, b)
 
 
 def lcm_of_list(numbers):
     """ Calculate the least common multiple of all numbers in the list """
     return reduce(lcm, numbers)
+
+
+def generate_execution_time_uniform(bcet: int, wcet: int) -> int:
+    """
+    Generate a random execution time using a uniform distribution (integer values)
+    in the interval [bcet, wcet]. This supports BCET = 0.
+    """
+    if bcet == wcet:
+        return bcet
+    return random.randint(bcet, wcet)
 
 
 def generate_execution_time_workload(bcet: int, wcet: int, period: int, alpha: float) -> int:
@@ -36,7 +45,6 @@ def generate_execution_time_workload(bcet: int, wcet: int, period: int, alpha: f
     - period (int): Task period (T)
     - alpha (float): load Factor (CPU Utilization Factor)
     """
-    # Calculate the execution time based on the load factor and period
     execution_time = alpha * period
     # Return the execution time, ensuring it is within the range of 1 and WCET
     return max(1, min(wcet, round(execution_time)))
@@ -86,53 +94,44 @@ class Task:
 
     def reset_execution_time(self):
         """Compute the (new) execution_time for this job instance."""
-        # If the method is "workload", generate the execution time using the workload method
         if self.method == "workload":
             self.execution_time = generate_execution_time_workload(self.bcet, self.wcet, self.period, self.alpha)
-        # If the method is "truncnorm", generate the execution time using the truncnorm method
         elif self.method == "truncnorm":
             self.execution_time = generate_execution_time_truncnorm(self.bcet, self.wcet)
-        # Set the remaining time to the execution time
+        elif self.method == "uniform":
+            self.execution_time = generate_execution_time_uniform(self.bcet, self.wcet)
         self.remaining_time = self.execution_time
 
+        
     def release_new_job(self, current_time):
         """Release a new job of this task at current_time."""
-        # Set the release time of the new job to the current time
         self.release_time = current_time
-        # Reset the execution time of the new job
         self.reset_execution_time()
-        # Set the completion time of the new job to None
         self.completion_time = None
-        # Set the response time of the new job to None
         self.response_time = None
     
     def is_ready(self, current_time):
         """ Check if the task is ready to execute """
-        # Check if the current time is greater than or equal to the release time and the remaining time is greater than 0
         return current_time >= self.release_time and self.remaining_time > 0
     
     def execute(self, time_units=1):
-        """ Execute the task for a given number of time units """
-        # Subtract the given number of time units from the remaining time
-        self.remaining_time = max(0, self.remaining_time - time_units)  
-        # Return True if the remaining time is 0, otherwise return False
+        """
+        Execute the task for a given number of time units.
+        Returns True if the task finishes (remaining_time becomes 0).
+        """
+        self.remaining_time = max(0, self.remaining_time - time_units)
         return self.remaining_time == 0  
 
     def calculate_response_time(self, finish_time):
-        """Calculate response time = finish_time - release_time, and update wcrt."""
-        # Set the completion time to the finish time
+        """Calculate response time and update worst-case response time (WCRT)."""
         self.completion_time = finish_time
-        # Calculate the response time by subtracting the release time from the finish time
         self.response_time = self.completion_time - self.release_time
-        # Update the worst-case response time (wcrt) if the current response time is greater
         self.wcrt = max(self.wcrt, self.response_time)
-        # Set the finish time to the finish time
-        self.finish_time = finish_time  
+        self.finish_time = finish_time
 
 
 def load_tasks_from_csv(filename, method="workload"):
     """ Load task list from CSV file with selected execution time method """
-    # Read the CSV file into a DataFrame
     df = pd.read_csv(filename)
     tasks = []
     # Iterate through each row in the DataFrame
@@ -156,7 +155,6 @@ def load_tasks_from_csv(filename, method="workload"):
 def assign_alpha(tasks, U_target=None, method="workload"):
     # Check if the method is not "workload"
     if method != "workload":
-        
         return tasks
     
     n = len(tasks)
@@ -168,8 +166,6 @@ def assign_alpha(tasks, U_target=None, method="workload"):
         for task in tasks:
             task.alpha = (task.period / total_T) * U_target  
     else:
-        
-        # Generate random alpha values for each task
         alphas = np.random.rand(n)
         # Normalize the alpha values
         alphas = alphas / alphas.sum()  
@@ -180,7 +176,6 @@ def assign_alpha(tasks, U_target=None, method="workload"):
         # Print the total CPU load
         print(f"Total CPU load: Σα = {sum(task.alpha for task in tasks):.2f}")
     return tasks
-
 
 def advance_time(current_time, job_release_times, active_jobs):
     """ Advance time to the next event """
@@ -194,19 +189,18 @@ def advance_time(current_time, job_release_times, active_jobs):
 
 
 def rate_monotonic_scheduling(tasks, simulation_time, verbose=False, log_file=None):
-    """ 
-    Rate Monotonic Scheduling 
     """
-    # Initialize current time, active jobs, job release times, and schedule log
+    Rate Monotonic Scheduling (RMS) simulation.
+    如果当前最高优先级任务的 remaining_time == 0，则立即完成并不增加 current_time，
+    不会记录到 schedule_log，从而在 Gantt 图中“跳过”0 执行时间的任务。
+    """
     current_time = 0
     active_jobs = []
     job_release_times = {task.task_id: 0 for task in tasks}
     schedule_log = []
 
-    # Loop through the simulation time
     while current_time < simulation_time:
-        
-        # For each task, if the current time is equal to the job release time, release the job
+        # 1) 释放新的 job
         for task in tasks:
             if current_time == job_release_times[task.task_id]:
                 task.release_new_job(current_time)
@@ -217,68 +211,79 @@ def rate_monotonic_scheduling(tasks, simulation_time, verbose=False, log_file=No
                     print(msg)
                 if log_file:
                     log_file.write(msg + "\n")
-        
-        # Sort the active jobs by priority
+
+        # 2) 按优先级升序排序 (priority值越小优先级越高)
         active_jobs.sort(key=lambda t: t.priority)
-        # If there are active jobs, execute the highest priority job
+
         if active_jobs:
             current_job = active_jobs[0]
-            finished = current_job.execute(1)
-            schedule_log.append((current_time, current_job.task_id))
-            msg = f"[Time {current_time}] Task {current_job.task_id} Running, Remaining: {current_job.remaining_time}"
-            if verbose:
-                print(msg)
-            if log_file:
-                log_file.write(msg + "\n")
-            # If the job is finished, calculate the response time and remove it from the active jobs
-            if finished:
-                
-                finish_t = current_time + 1
-                current_job.calculate_response_time(finish_t)
-                
-                current_job.finish_time = finish_t
-                current_job.calculate_response_time(current_time + 1)
+            # 如果任务的 remaining_time == 0，立即完成并不推进时间
+            if current_job.remaining_time == 0:
+                current_job.calculate_response_time(current_time)
                 active_jobs.remove(current_job)
-                msg = f"[Time {current_time+1}] Task {current_job.task_id} Completed, Response: {current_job.response_time}"
+                msg = (f"[Time {current_time}] Task {current_job.task_id} "
+                       f"Completed Immediately (0 exec time), Response: {current_job.response_time}")
                 if verbose:
                     print(msg)
                 if log_file:
                     log_file.write(msg + "\n")
-        # If there are no active jobs, add an idle entry to the schedule log
+                # 不记录到 schedule_log，也不增加 current_time
+                # 直接继续 while 循环，可能还有别的任务也为0
+                continue
+            else:
+                # 正常执行 1 个 time unit
+                finished = current_job.execute(1)
+                schedule_log.append((current_time, current_job.task_id))
+                msg = (f"[Time {current_time}] Task {current_job.task_id} Running, "
+                       f"Remaining: {current_job.remaining_time}")
+                if verbose:
+                    print(msg)
+                if log_file:
+                    log_file.write(msg + "\n")
+
+                if finished:
+                    finish_t = current_time + 1
+                    current_job.calculate_response_time(finish_t)
+                    active_jobs.remove(current_job)
+                    msg = (f"[Time {finish_t}] Task {current_job.task_id} "
+                           f"Completed, Response: {current_job.response_time}")
+                    if verbose:
+                        print(msg)
+                    if log_file:
+                        log_file.write(msg + "\n")
+
+                # 只有当我们真正执行了 1 time unit，才推进 current_time
+                current_time += 1
         else:
+            # 没有活动任务 => idle
             schedule_log.append((current_time, "Idle"))
-        # Advance the current time
-        current_time += advance_time(current_time, job_release_times, active_jobs)
+            # idle时，可能要跳到下一个release时间
+            jump = advance_time(current_time, job_release_times, active_jobs)
+            current_time += jump
     
-    # If verbose is True, print the worst-case response time for each task
     if verbose:
         print("\n=== Worst-Case Response Time (WCRT) ===")
         for task in tasks:
             print(f"Task {task.task_id}: WCRT = {task.wcrt}")
-    # Return the schedule log
+
     return schedule_log
 
 
 def plot_gantt_chart(schedule_log, save_path=None):
     """ Draw a Gantt chart """
-    # Create a figure with a size of 10x5
     plt.figure(figsize=(10, 5))
-    # Create a dictionary to store the colors of each task
     task_colors = {}
-    # Create a dictionary to store the y position of each task
     y_pos = {}
     
-    # Get a set of unique tasks from the schedule log, excluding "Idle"
     unique_tasks = set(entry[1] for entry in schedule_log if entry[1] != "Idle")
-    # Loop through the unique tasks and assign a color and y position to each
     for i, task in enumerate(sorted(unique_tasks)):
         task_colors[task] = plt.colormaps["tab10"](i)
         y_pos[task] = i
-    # Loop through the schedule log and plot a bar for each task
+
     for start_time, task in schedule_log:
         if task != "Idle":
             plt.barh(y_pos[task], 1, left=start_time, color=task_colors[task], edgecolor="black")
-    # Set the y ticks to the sorted keys of the y_pos dictionary
+
     plt.yticks(range(len(y_pos)), sorted(y_pos.keys()))
     # Set the x and y labels
     plt.xlabel("Time")
@@ -288,12 +293,10 @@ def plot_gantt_chart(schedule_log, save_path=None):
     # Set the grid to only show the x axis
     plt.grid(axis="x")
     
-    # If a save path is provided, save the plot to that path
     if save_path:
         plt.savefig(save_path)
         print(f"Gantt chart saved to {save_path}")
     
-    # Show the plot
     plt.show()
 
 
@@ -321,8 +324,6 @@ def run_multiple_simulations(original_tasks, simulation_time, num_runs=10, verbo
         if verbose:
             print(f"\n=== Run {run+1} ===")
         
-        
-        # If a log filename is provided, open the file and write the run number
         if log_filename:
             with open(log_filename, "w") as log_file:
                 if verbose:
@@ -362,7 +363,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VSS Simulator with extended statistics and logging")
     parser.add_argument("csv_filename", help="CSV file containing task parameters")
     parser.add_argument("--U_target", type=float, default=None, help="Target CPU utilization (0,1)")
-    parser.add_argument("--method", choices=["workload", "truncnorm"], default="workload", help="Execution time generation method")
+    parser.add_argument("--method", choices=["workload", "truncnorm", "uniform"], default="uniform", help="Execution time generation method")
     parser.add_argument("--runs", type=int, default=1, help="Number of simulation runs")
     parser.add_argument("--simtime", type=int, default=None, help="Simulation time (if not provided, use LCM of task periods)")
     parser.add_argument("--verbose", action="store_true", help="Output detailed log to console")
@@ -379,17 +380,13 @@ if __name__ == "__main__":
     original_tasks = load_tasks_from_csv(args.csv_filename, args.method)
     assign_alpha(original_tasks, args.U_target, method=args.method)
     
-    
     for task in original_tasks:
         if args.method == "workload":
-            task.execution_time = generate_execution_time_workload(
-                task.bcet, task.wcet, task.period, task.alpha
-            )
-        else:
-            task.execution_time = generate_execution_time_truncnorm(
-                task.bcet, task.wcet
-            )
-    
+            task.execution_time = generate_execution_time_workload(task.bcet, task.wcet, task.period, task.alpha)
+        elif args.method == "truncnorm":
+            task.execution_time = generate_execution_time_truncnorm(task.bcet, task.wcet)
+        elif args.method == "uniform":
+            task.execution_time = generate_execution_time_uniform(task.bcet, task.wcet)
     
     if args.simtime:
         simulation_time = args.simtime
@@ -397,13 +394,10 @@ if __name__ == "__main__":
         simulation_time = lcm_of_list([task.period for task in original_tasks])
     print(f"Simulation Time: {simulation_time}")
     
-    
     log_file_path = None
     if args.logfile:
-        
         log_file_path = os.path.join(logs_dir, "sim.log")
 
-    
     if args.runs == 1:
         schedule_log = rate_monotonic_scheduling(
             original_tasks, simulation_time,
@@ -414,7 +408,6 @@ if __name__ == "__main__":
         gantt_path = os.path.join(images_dir, "gantt_chart.png")
         plot_gantt_chart(schedule_log, save_path=gantt_path)
     else:
-        
         stats = run_multiple_simulations(
             original_tasks,
             simulation_time,

@@ -1,3 +1,4 @@
+# compare.py - Compare RTA and VSS with optional Gantt chart generation
 import sys
 import copy
 import os
@@ -143,8 +144,9 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
         print(f"  Schedulable: {'True' if schedulable else 'False'}")
 
         # Print the task names, RTA WCRT, deadlines, status, and VSS average WCRT
-        print("Task  RTA_WCRT  Deadline  Status  VSS_Avg_WCRT")
-        print("----  --------  --------  ------  -----------")
+        print("Task  RTA_WCRT  Deadline  Status  VSS_Avg  VSS_Median  VSS_95th  VSS_Max")
+        print("----  --------  --------  ------  -------  ---------  --------  -------")
+
 
         # Sort the tasks by name
         sorted_tasks = sorted(tasks_rta, key=lambda t: numeric_task_name(t.name))
@@ -152,9 +154,14 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
         # Print the task information
         for t in sorted_tasks:
             wcrt_rta = rta_results[t.name]
-            avg_wcrt_vss = stats.get(t.name, {}).get('average', 0.0)
+            task_stats = stats.get(t.name, {})
+            avg_wcrt_vss = task_stats.get('average', 0.0)
+            median_wcrt_vss = task_stats.get('median', 0.0)
+            percentile_95 = task_stats.get('95th', 0.0)
+            max_wcrt_vss = task_stats.get('max', 0.0)
             status_char = "✓" if wcrt_rta <= t.deadline else "✗"
-            print(f" {t.name:<4} {wcrt_rta:<6.1f} {t.deadline:<8} {status_char:<6} {avg_wcrt_vss:<.2f}")
+            print(f" {t.name:<4} {wcrt_rta:<8.1f} {t.deadline:<8} {status_char:<8} {avg_wcrt_vss:<8.2f} {median_wcrt_vss:<9.2f} {percentile_95:<8.2f} {max_wcrt_vss:<8.2f}")
+
 
         # Print the end of the task information
         print("----  -----  --------  ------   -----------")
@@ -168,8 +175,7 @@ def main():
     parser = argparse.ArgumentParser(description="Compare RTA and VSS with optional Gantt chart generation")
     parser.add_argument("csv_filename", help="CSV file containing task parameters")
     parser.add_argument("--U_target", type=float, default=None, help="Target CPU utilization (0,1)")
-    parser.add_argument("--method", choices=["workload", "truncnorm"], default="workload",
-                        help="Execution time generation method")
+    parser.add_argument("--method", choices=["workload", "truncnorm", "uniform"], default="uniform", help="Execution time generation method")
     parser.add_argument("--simtime", type=int, default=None, help="Total simulation time to use instead of LCM of task periods")
     parser.add_argument("--runs", type=int, default=50, help="Number of simulation runs")
     parser.add_argument("--logfile", action="store_true",

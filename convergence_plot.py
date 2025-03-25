@@ -1,3 +1,4 @@
+# convergence_plot.py - Generate convergence plot for VSS WCRT.
 import sys
 import copy
 import argparse
@@ -166,7 +167,7 @@ def main():
     parser.add_argument("csv_filename", help="CSV file containing task parameters")
     parser.add_argument("--U_target", type=float, default=None,
                         help="Target CPU utilization (0,1) used only if method=workload")
-    parser.add_argument("--method", choices=["workload", "truncnorm"], default="workload",
+    parser.add_argument("--method", choices=["workload", "truncnorm", "uniform"], default="uniform",
                         help="Execution time generation method for VSS tasks")
     parser.add_argument("--runs", type=int, default=1000,
                         help="Number of simulation runs for convergence")
