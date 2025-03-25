@@ -1,4 +1,3 @@
-# compare.py
 import sys
 import copy
 import os
@@ -18,94 +17,108 @@ from vss_simulator import (
 )
 
 
-# 定义辅助函数，提取 "T10" 中的数字 10 用于排序
 def numeric_task_name(task_name: str) -> int:
-    # 假设任务名以 'T' 开头，后面是数字
+    #Use the re.sub function to remove all non-digit characters from the string
     return int(re.sub(r"\D", "", task_name))
 
 def plot_comparison_chart(rta_results, stats, save_path="output/images/comparison_chart.png"):
-    # 获取所有任务标识，按照 rta_results 的 key 排序
+    
+    # Sort the tasks by their numeric task name
     tasks = sorted(rta_results.keys(), key=numeric_task_name)
 
+    # Get the RTA WCRT for each task
     rta_wcrt = [rta_results[t] for t in tasks]
+    
+    # Get the VSS average WCRT for each task
     vss_avg = [stats[t]["average"] if t in stats else 0 for t in tasks]
 
-    x = np.arange(len(tasks))  # x 轴位置
-    width = 0.35  # 条形宽度
-
+    # Create a bar chart with the RTA WCRT and VSS average WCRT
+    x = np.arange(len(tasks))
+    width = 0.35
     fig, ax = plt.subplots(figsize=(10, 6))
     rects1 = ax.bar(x - width/2, rta_wcrt, width, label='RTA WCRT')
     rects2 = ax.bar(x + width/2, vss_avg, width, label='VSS Avg WCRT')
 
-    # 添加轴标签和标题
+    # Set the y-axis label and title
     ax.set_ylabel('WCRT')
     ax.set_title('Comparison of RTA WCRT and VSS Average WCRT')
+    
+    # Set the x-axis ticks and labels
     ax.set_xticks(x)
     ax.set_xticklabels(tasks)
+    
+    # Add a legend
     ax.legend()
 
-    # 在每个条形上添加数值标签
+    
     def autolabel(rects):
+        # Loop through each bar in the bar chart
         for rect in rects:
+            # Get the height of the bar
             height = rect.get_height()
-            ax.annotate(f'{height:.1f}',
-                        xy=(rect.get_x() + rect.get_width() / 2, height),
-                        xytext=(0, 3),  # 垂直偏移 3 个点
-                        textcoords="offset points",
+
+            # Annotate the height of the bar on the chart
+            ax.annotate(f'{height:.1f}',  # Format the height to one decimal place
+                        xy=(rect.get_x() + rect.get_width() / 2, height),  # Position the text at the center of the bar
+                        xytext=(0, 3),  # Offset the text 3 points above the bar
+                        textcoords="offset points",  # Use the offset points as the text coordinates
                         ha='center', va='bottom')
     autolabel(rects1)
     autolabel(rects2)
 
+    # Adjust the layout
     fig.tight_layout()
     
-    # 保存图表到文件
+    # Save the chart
     plt.savefig(save_path)
     print(f"Comparison chart saved to {save_path}")
+    
+    # Show the chart
     plt.show()   
  
 
 def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, logfile=False, simtime=None):
-    # 打印运行次数信息
+    # Print the number of runs
     print(f"Running simulation for {runs} runs...")
         
-    # 固定输出目录
+    # Define the directories for images and logs
     images_dir = "output/images"
     logs_dir   = "output/logs"
     
+    # Create the directories if they don't exist
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(logs_dir, exist_ok=True)
     
-    # 使用 rta 模块加载任务（CSV 文件格式应保持一致）
+    # Load the tasks from the csv file
     tasks_rta = load_tasks(csv_filename)
-    # 使用 vss_simulator 模块加载任务
     tasks_vss = load_tasks_from_csv(csv_filename, method)
 
-    # 为 VSS 部分任务分配 CPU 负载因子 α
+    # Assign alpha values to the tasks
     tasks_vss = assign_alpha(tasks_vss, U_target=U_target, method=method)
     
-    # 如果用户指定了 simtime，则使用，否则计算最小公倍数
+    # Set the simulation time
     if simtime is None:
         simulation_time = lcm_of_list([task.period for task in tasks_vss])
     else:
         simulation_time = simtime
         
+    # Print the simulation time
     print(f"Simulation Time: {simulation_time}")
     
-    # 运行 RTA 分析（任务按优先级排序，RTA 使用 task.name 作为标识）
+    # Calculate the worst-case response times for the tasks using RTA
     rta_results = RTAAnalyzer.calculate_wcrt(sorted(tasks_rta, key=lambda t: t.priority))
 
+    # If only one run, schedule the tasks and plot the gantt chart
     if runs == 1:
-        # 单次仿真：运行调度算法并获取调度日志
         schedule_log = rate_monotonic_scheduling(tasks_vss, simulation_time)
-        # 保存甘特图到 images/gantt_chart.png
         gantt_path = os.path.join(images_dir, "gantt_chart.png")
         plot_gantt_chart(schedule_log, save_path=gantt_path)
     else:
-        # 多次仿真
-        # 若启用 --logfile，则写到 output/logs/compare.log
+        
+        # Set the log file path
         log_file_path = os.path.join(logs_dir, "compare.log") if logfile else None
         
-        # 多次仿真，输出扩展统计指标（平均、中位数、方差、最大值、95百分位）
+        # Run multiple simulations
         stats = run_multiple_simulations(
             tasks_vss,
             simulation_time,
@@ -114,35 +127,39 @@ def compare_rta_vs_vss(csv_filename, U_target=None, method="workload", runs=50, 
             log_filename=log_file_path
         )
         
+        # Print the comparison of RTA and VSS
         print("\n=== Comparison of RTA and VSS ===")
         
-        # （A）先判断可调度性
+        # Set the schedulable flag
         schedulable = True
+        
+        # Check if the tasks are schedulable
         for task in tasks_rta:
             if rta_results[task.name] > task.deadline:
                 schedulable = False
                 break
-
+        
+        # Print the schedulable status
         print(f"  Schedulable: {'True' if schedulable else 'False'}")
 
-        # （B）打印每个任务的对比：RTA WCRT & VSS 统计
-        # 同时打印该任务是否可调度 (✓ / ✗)
+        # Print the task names, RTA WCRT, deadlines, status, and VSS average WCRT
         print("Task  RTA_WCRT  Deadline  Status  VSS_Avg_WCRT")
         print("----  --------  --------  ------  -----------")
 
-        # 按照任务名中的数字排序
+        # Sort the tasks by name
         sorted_tasks = sorted(tasks_rta, key=lambda t: numeric_task_name(t.name))
-
+        
+        # Print the task information
         for t in sorted_tasks:
-            wcrt_rta = rta_results[t.name]   # RTA 得到的WCRT
+            wcrt_rta = rta_results[t.name]
             avg_wcrt_vss = stats.get(t.name, {}).get('average', 0.0)
             status_char = "✓" if wcrt_rta <= t.deadline else "✗"
-            # 为了对齐，与“标准答案”接近，可在任务名前留1空格
             print(f" {t.name:<4} {wcrt_rta:<6.1f} {t.deadline:<8} {status_char:<6} {avg_wcrt_vss:<.2f}")
 
+        # Print the end of the task information
         print("----  -----  --------  ------   -----------")
 
-        # ---- 可视化：RTA vs. VSS 条形图 ----
+        # Plot the comparison chart
         comparison_path = os.path.join(images_dir, "comparison_chart.png")
         plot_comparison_chart(rta_results, stats, save_path=comparison_path)
 
@@ -158,8 +175,10 @@ def main():
     parser.add_argument("--logfile", action="store_true",
                         help="If set, enable logging to 'output/logs/compare.log'")
 
+    # Parse the arguments
     args = parser.parse_args()
 
+    # Call the compare_rta_vs_vss function with the parsed arguments
     compare_rta_vs_vss(
     csv_filename=args.csv_filename,
     U_target=args.U_target,
